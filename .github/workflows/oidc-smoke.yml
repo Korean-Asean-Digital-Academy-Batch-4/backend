@@ -6,7 +6,7 @@ name: Uji jabat tangan OIDC
 on: workflow_dispatch
 
 permissions:
-  id-token: write      # tanpa ini GitHub tidak menerbitkan token sama sekali
+  id-token: write # tanpa ini GitHub tidak menerbitkan token sama sekali
   contents: read
 
 jobs:
