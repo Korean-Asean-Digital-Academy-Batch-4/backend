@@ -13,6 +13,23 @@ jobs:
   uji:
     runs-on: ubuntu-latest
     steps:
+      # Dijalankan LEBIH DAHULU supaya hasilnya tetap terlihat meskipun
+      # peminjaman role gagal. Yang dicetak hanya klaim — bukan tokennya.
+      - name: Tampilkan klaim token OIDC yang dikirim GitHub
+        run: |
+          TOKEN=$(curl -sS \
+            -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=sts.amazonaws.com" \
+            | jq -r '.value')
+
+          PAYLOAD=$(echo "$TOKEN" | cut -d. -f2 | tr '_-' '/+')
+          while [ $(( ${#PAYLOAD} % 4 )) -ne 0 ]; do PAYLOAD="${PAYLOAD}="; done
+
+          echo "=== Yang HARUS cocok dengan trust policy ==="
+          echo "$PAYLOAD" | base64 -d | jq '{sub, aud}'
+          echo "=== Keterangan tambahan ==="
+          echo "$PAYLOAD" | base64 -d | jq '{repository, ref, workflow_ref}'
+
       - name: Pinjam role AWS lewat OIDC
         uses: aws-actions/configure-aws-credentials@v4
         with:
