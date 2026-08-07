@@ -2,7 +2,7 @@
 
 | Keterangan | Isi |
 |---|---|
-| **Versi** | v2.0 |
+| **Versi** | v2.1 |
 | **Tanggal** | 7 Agustus 2026 |
 | **Disusun oleh** | Re:Code |
 | **Kedudukan** | Menetapkan **bagaimana agen membangun EduTrack** di atas dokumen yang sudah terkunci. Berada di luar rantai penguncian dan tidak menetapkan apa pun tentang produk |
@@ -12,7 +12,7 @@
 >
 > Apabila isi dokumen ini bertentangan dengan dokumen pada rantai penguncian, **dokumen pada rantai penguncian yang berlaku**.
 
-> ⚠️ **Salinan.** Berkas induknya berada di repositori Docks pada `context/AGENTS.md`. Perubahan ditulis di sana lebih dahulu, lalu disalin ke sini — jangan disunting langsung di repositori ini.
+> ⚠️ **Salinan.** Berkas induknya berada di repositori Docs pada `context/AGENTS.md`. Perubahan ditulis di sana lebih dahulu, lalu disalin ke sini — jangan disunting langsung di repositori ini.
 >
 > Tautan dokumen di bawah menunjuk `../context/`, yaitu susunan pada mesin pengembang:
 >
@@ -492,6 +492,62 @@ Sesudah langkah 7, agen melanjutkan ke A2 dan tidak lagi memerlukan apa pun dari
 
 ---
 
+## 13. Alat bantu ingatan dan penelusuran
+
+Dua alat terpasang pada mesin pengembang. Keduanya **membantu agen**, dan tidak satu pun menjadi sumber kebenaran — sumber kebenaran tetap sepuluh dokumen pada `context/`.
+
+### 13.1 engram — ingatan lintas sesi
+
+Agen kehilangan seluruh konteks ketika sesi berakhir. `engram` menyimpannya dalam basis data SQLite di `~/.engram/engram.db`, dan menyediakannya kembali lewat MCP.
+
+Repositori ini membawa konfigurasinya sendiri pada `.mcp.json`, sehingga agen mana pun yang bekerja di sini langsung memperolehnya:
+
+```json
+{ "mcpServers": { "engram": {
+    "command": "engram",
+    "args": ["mcp", "--tools=agent", "--project", "edutrack-backend"] } } }
+```
+
+**Nama proyek dipatok eksplisit.** Tanpa itu `engram` menyimpulkannya dari direktori, dan `engram doctor` sendiri memperingatkan bahwa penyimpulan tersebut menyebabkan ingatan tersimpan pada proyek yang salah. Profil `agent` dipilih karena memuat lima belas alat baca-tulis tanpa alat administratif seperti penghapusan proyek.
+
+| Kapan | Yang dilakukan |
+|---|---|
+| **Awal sesi** | `mem_context` — membaca apa yang dikerjakan sesi sebelumnya |
+| **Sebelum menggarap bagian yang asing** | `mem_search` — memeriksa apakah persoalannya pernah dihadapi |
+| **Setelah pekerjaan bermakna selesai** | `mem_save` — satu tahap tuntas, satu bug terpecahkan, satu pendekatan gagal |
+
+Bentuk simpanan mengikuti anjuran engram: **judul, jenis, lalu Apa / Kenapa / Di mana / Yang dipelajari.**
+
+**Yang tidak boleh disimpan — ini yang paling menentukan.** Jangan menyalin isi dokumen ke dalam engram. Invarian, keputusan, kontrak endpoint, dan aturan migrasi sudah tercatat pada `context/`, dan menyalinnya menghasilkan **sumber kedua yang akan menyimpang**. Persoalan yang sama sudah dilawan di seluruh proyek ini.
+
+Simpan yang **tidak** dicatat dokumen: kenapa sebuah pendekatan dicoba lalu ditinggalkan, jebakan yang baru ketahuan saat menjalankan, keadaan pekerjaan saat sesi berhenti di tengah.
+
+Pemasangan tingkat mesin — beserta hook dan pemulihan setelah pemadatan konteks — bersifat opsional dan dijalankan sendiri:
+
+```bash
+engram setup claude-code
+```
+
+### 13.2 graphify — graf pengetahuan atas kode
+
+`graphify` mengubah satu folder menjadi graf yang dapat ditanyai, sehingga pertanyaan arsitektur dijawab dari graf alih-alih dengan membaca ulang berkas. Penghematan token datang dari situ.
+
+```bash
+graphify .              # bangun atau bangun ulang
+graphify . --update     # inkremental, hanya berkas yang berubah
+graphify query "..."    # tanya graf yang sudah ada
+```
+
+**Jalankan `--update` setelah satu tahap §8.1 selesai**, bukan setiap kali menyimpan berkas.
+
+`graphify-out/` **tidak dilacak git** — ia selalu dapat dibangun ulang, dan versinya akan bertabrakan pada setiap penggabungan.
+
+**Batas yang berlaku hari ini.** Korpus kode saja tidak memerlukan kunci API, tetapi berkas dokumen memerlukannya untuk penyarian semantik. Selama kunci belum disetel, graf hanya mencakup kode. Pada tahap A0 dan A1 isinya masih tujuh belas simpul, sehingga manfaatnya baru terasa mulai A4 ketika rute dan skema sudah banyak.
+
+Menyetel kunci API adalah keputusan pemilik mesin dan tidak dilakukan agen.
+
+---
+
 ## Riwayat
 
 | Tanggal | Perubahan |
@@ -499,3 +555,4 @@ Sesudah langkah 7, agen melanjutkan ke A2 dan tidak lagi memerlukan apa pun dari
 | 6 Agustus 2026 | Dokumen dibuat. Menetapkan alur kerja agen ECC di atas rantai penguncian EduTrack: peta baca per jenis tugas, prosedur ketika kode dan dokumen bertentangan, dua belas larangan mutlak, tiga tingkat pengujian termasuk pembuktian penegakan oleh basis data, konvensi penamaan lintas lapisan, serta delapan tahap implementasi beserta gerbang selesainya |
 | 7 Agustus 2026 | §5.3 diperluas: lima aturan migrasi dinyatakan lengkap, ditambah header klasifikasi wajib, konvensi penamaan `expand`/`contract`, kewajiban `grep` sebelum `contract`, dan kewajiban lolos `squawk`. Mengikuti [DEPLOYMENT.md §6.5](../context/DEPLOYMENT.md) dan CK-D-03 |
 | 7 Agustus 2026 | **Versi 2.0.** Pasal 8 ditulis ulang menjadi **dua jalur yang berjalan bersamaan** — Jalur A dikerjakan agen tanpa menyentuh AWS, Jalur B dikerjakan manusia — karena setiap jalur menuju kuasa AWS menuntut kode MFA sehingga agen tidak dapat menaikkan infrastruktur. Ditambahkan **§10 titik henti manusia**, **§11 git dan pemulihan** yang mengikat riwayat git pada rantai pemulihan produksi, dan **§12 memulai dari repositori kosong** |
+| 7 Agustus 2026 | Ditambahkan **§13 alat bantu ingatan dan penelusuran**: `engram` sebagai ingatan lintas sesi lewat MCP dengan nama proyek dipatok eksplisit, dan `graphify` sebagai graf pengetahuan atas kode. Ditegaskan bahwa keduanya tidak pernah menjadi sumber kebenaran, dan isi dokumen `context/` tidak boleh disalin ke dalam engram karena menghasilkan sumber kedua yang akan menyimpang |

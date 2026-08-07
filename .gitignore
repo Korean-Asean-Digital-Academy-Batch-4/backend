@@ -6,3 +6,6 @@ coverage/
 .env.*
 !.env.example
 .DS_Store
+
+# Graf pengetahuan graphify — selalu dapat dibangun ulang
+graphify-out/
