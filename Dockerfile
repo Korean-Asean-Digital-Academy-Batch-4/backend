@@ -18,6 +18,8 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci --omit=dev
 COPY --from=build /app/dist ./dist
+# Fungsi migrate membaca berkas ini saat rilis — DEPLOYMENT.md sec 3.3 langkah 6.
+COPY migrations ./migrations
 
 ENV PORT=8080
 ENV AWS_LWA_READINESS_CHECK_PATH=/healthz

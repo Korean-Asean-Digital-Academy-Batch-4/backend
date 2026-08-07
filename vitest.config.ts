@@ -3,6 +3,9 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
   test: {
     include: ["tests/**/*.test.ts"],
+    // Uji penegakan basis data menuntut Docker dan berjalan lewat
+    // `npm run test:db` — vitest.config.db.ts.
+    exclude: ["tests/db/**", "node_modules/**", "dist/**"],
     coverage: {
       provider: "v8",
       include: ["src/**"],

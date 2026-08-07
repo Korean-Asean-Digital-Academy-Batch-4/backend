@@ -9,3 +9,6 @@ coverage/
 
 # Graf pengetahuan graphify — selalu dapat dibangun ulang
 graphify-out/
+
+# Keluaran drizzle-kit generate — hanya untuk peninjauan, bukan yang dijalankan.
+.drizzle-bangkit/

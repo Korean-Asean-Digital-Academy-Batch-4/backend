@@ -1,0 +1,29 @@
+# Linter migrasi — lapis 2 pada DEPLOYMENT.md sec 6.5.
+#
+# Yang dijaga linter ini adalah aturan 2, 3, dan 4 pada sec 6.3: DROP COLUMN,
+# DROP TABLE, RENAME COLUMN, dan NOT NULL tanpa DEFAULT. Keempatnya dibiarkan
+# menyala dan tidak boleh dimatikan tanpa amandemen DEPLOYMENT.md.
+
+pg_version = "17.0"
+
+# SCHEMA.md sec 9.1: setiap berkas migrasi dijalankan di dalam satu transaksi,
+# dan penerap pada src/db/migrasi.ts memang membungkusnya BEGIN..COMMIT. Tanpa
+# pernyataan ini squawk mengira setiap pernyataan berdiri sendiri, lalu meminta
+# IF NOT EXISTS pada seluruhnya.
+assume_in_transaction = true
+
+excluded_rules = [
+  # SCHEMA.md sec 9.1 menolak CREATE INDEX CONCURRENTLY dengan sengaja: ia tidak
+  # dapat berjalan di dalam transaksi, sehingga memakainya berarti mengorbankan
+  # DDL transaksional — satu dari empat kemampuan PostgreSQL yang menentukan
+  # pemilihannya (Techstack.md sec 4.1). Pada volume RFC-001 sec 8.1 pembangunan
+  # indeks selesai dalam hitungan milidetik.
+  "require-concurrent-index-creation",
+
+  # CK-S-08 menetapkan smallint bagi bobot dan KKM, dan integer bagi penghitung
+  # pembatas laju. Keduanya keputusan yang sudah dibayar pertimbangannya:
+  # smallint menjadikan bobot pecahan mustahil sekaligus membuat penjumlahan
+  # pada trg_komponen_bobot bersifat pasti.
+  "prefer-bigint-over-smallint",
+  "prefer-bigint-over-int",
+]
