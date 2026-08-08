@@ -3,7 +3,7 @@
 | Keterangan | Isi |
 |---|---|
 | **Versi** | v2.2 |
-| **Tanggal** | 7 Agustus 2026 |
+| **Tanggal** | 8 Agustus 2026 |
 | **Disusun oleh** | Re:Code |
 | **Kedudukan** | Menetapkan **bagaimana agen membangun EduTrack** di atas dokumen yang sudah terkunci. Berada di luar rantai penguncian dan tidak menetapkan apa pun tentang produk |
 | **Kerangka kerja** | [ECC](https://github.com/affaan-m/ecc) — aturan, agen, dan perintah yang terpasang pada `~/.claude/` |
@@ -475,13 +475,12 @@ Agen **berhenti dan melapor** ketika mencapai salah satu titik berikut. Tidak me
 | `terraform apply` | Peminjaman role `edutrack-terraform` | Sama |
 | Pembuatan keempat rahasia | Dibuat di luar Terraform | [Techstack §7](../context/Techstack.md) |
 | Pendaftaran OIDC provider dan role | Konsol AWS | Lihat [RUNBOOK-OIDC.md](../context/RUNBOOK-OIDC.md) |
-| Nama domain dan sertifikat | Belum diputuskan | Techstack §9 butir 4 |
-| **Jenjang sekolah** — SMA saja atau ada SMP | Jawaban sekolah | **S-04**, menentukan `CHECK` pada migrasi 0002 dan 0003 |
-| **Satu siswa satu kelas per semester** | Jawaban sekolah | **T-02**, ditegakkan `uq_kelas_siswa_periode` |
-| **Satu guru boleh wali lebih dari satu kelas** | Jawaban sekolah | **S-02**, ditegakkan `uq_kelas_wali_per_periode` |
+| **Nama domain dan sertifikat** | Nama yang sesungguhnya, beserta pembelian domainnya | Bentuk DNS sudah ditetapkan **CK-17**; yang belum ada hanya namanya — [Techstack §9](../context/Techstack.md) butir 4. **Dikerjakan paling akhir** |
 | Komponen dan bobot templat | Validasi sekolah **V1** | Hanya data, bukan skema. **Tidak menghalangi** |
 
-Tiga jawaban sekolah menghalangi migrasi bertemu **data sekolah sungguhan**, bukan menghalangi migrasinya ditulis dan diuji lokal. Agen tetap melanjutkan A2, dan melaporkan bahwa ketiganya belum terjawab.
+**Tiga pertanyaan sekolah sudah terjawab 8 Agustus 2026** dan tidak lagi menjadi titik henti: jenjang SMA saja (**S-04**), satu siswa satu kelas per semester (**T-02**), dan satu guru wali paling banyak satu kelas (**S-02**). Ketiganya sudah sesuai skema v1.0, sehingga tidak ada constraint yang berubah.
+
+**Nama domain adalah satu-satunya titik henti yang sengaja ditunda paling akhir.** Ia tidak menghalangi satu pun tahap Jalur A: CK-17 sudah menetapkan bentuk DNS untuk AWS maupun on-prem, sehingga Terraform, `install.sh`, dan `docker-compose.yml` on-prem dapat ditulis dan ditinjau lengkap tanpa domain. Yang menunggu hanyalah pengisian nilainya dan penerapannya.
 
 **Bentuk laporan berhenti:** sebutkan titik mana, apa yang dibutuhkan, apa yang sudah selesai, dan apa yang bisa dikerjakan sementara menunggu.
 
@@ -605,4 +604,5 @@ Menyetel kunci API adalah keputusan pemilik mesin dan tidak dilakukan agen.
 | 7 Agustus 2026 | §5.3 diperluas: lima aturan migrasi dinyatakan lengkap, ditambah header klasifikasi wajib, konvensi penamaan `expand`/`contract`, kewajiban `grep` sebelum `contract`, dan kewajiban lolos `squawk`. Mengikuti [DEPLOYMENT.md §6.5](../context/DEPLOYMENT.md) dan CK-D-03 |
 | 7 Agustus 2026 | **Versi 2.0.** Pasal 8 ditulis ulang menjadi **dua jalur yang berjalan bersamaan** — Jalur A dikerjakan agen tanpa menyentuh AWS, Jalur B dikerjakan manusia — karena setiap jalur menuju kuasa AWS menuntut kode MFA sehingga agen tidak dapat menaikkan infrastruktur. Ditambahkan **§10 titik henti manusia**, **§11 git dan pemulihan** yang mengikat riwayat git pada rantai pemulihan produksi, dan **§12 memulai dari repositori kosong** |
 | 7 Agustus 2026 | Ditambahkan **§13 alat bantu ingatan dan penelusuran**: `engram` sebagai ingatan lintas sesi lewat MCP dengan nama proyek dipatok eksplisit, dan `graphify` sebagai graf pengetahuan atas kode. Ditegaskan bahwa keduanya tidak pernah menjadi sumber kebenaran, dan isi dokumen `context/` tidak boleh disalin ke dalam engram karena menghasilkan sumber kedua yang akan menyimpang |
-| 7 Agustus 2026 | **Versi 2.2 — disesuaikan dengan apa yang terbukti pada A2 dan A3.** §2 Fase 4 kini menyebut tiga perintah gerbang secara eksplisit, karena `npm run periksa` sendirian tidak menjalankan linter migrasi maupun bukti penegakan basis data. §4.1 menyatakan ambang `domain/` dipatok pada keempat metrik dan ambang global 80% baru menyala pada A5 beserta alasannya, serta mewajibkan setiap ambang dibuktikan dapat merah sebelum dipercaya. §4.2 menyebut perintah yang menjalankannya beserta alasan tesnya berurutan dan berbenih cadangan. §5.3 diperluas dengan baris `SET LOCAL` batas kunci dan batas pernyataan, konfigurasi `.squawk.toml` yang wajib berawalan titik, dan larangan menyunting migrasi yang sudah diterapkan. §6 menetapkan apa yang dilakukan ketika harness melarang pemanggilan subagen: tinjauan keamanan **berhenti dan melapor**, tidak diganti tinjauan sendiri. §12 langkah 7 dan §13 disesuaikan dengan keadaan yang sebenarnya |
+| 8 Agustus 2026 | **Versi 2.2 — disesuaikan dengan apa yang terbukti pada A2 dan A3.** §2 Fase 4 kini menyebut tiga perintah gerbang secara eksplisit, karena `npm run periksa` sendirian tidak menjalankan linter migrasi maupun bukti penegakan basis data. §4.1 menyatakan ambang `domain/` dipatok pada keempat metrik dan ambang global 80% baru menyala pada A5 beserta alasannya, serta mewajibkan setiap ambang dibuktikan dapat merah sebelum dipercaya. §4.2 menyebut perintah yang menjalankannya beserta alasan tesnya berurutan dan berbenih cadangan. §5.3 diperluas dengan baris `SET LOCAL` batas kunci dan batas pernyataan, konfigurasi `.squawk.toml` yang wajib berawalan titik, dan larangan menyunting migrasi yang sudah diterapkan. §6 menetapkan apa yang dilakukan ketika harness melarang pemanggilan subagen: tinjauan keamanan **berhenti dan melapor**, tidak diganti tinjauan sendiri. §12 langkah 7 dan §13 disesuaikan dengan keadaan yang sebenarnya |
+| 8 Agustus 2026 | §10 disesuaikan. Tiga pertanyaan sekolah — S-04, T-02, dan S-02 — sudah terjawab dan dikeluarkan dari daftar titik henti; barisnya diganti satu paragraf yang mencatat jawabannya. Baris nama domain diperbarui mengikuti **CK-17**: yang belum ada hanya namanya, bentuk DNS-nya sudah ditetapkan, dan penerapannya **sengaja dikerjakan paling akhir** tanpa menahan satu pun tahap Jalur A |
