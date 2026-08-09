@@ -1,16 +1,16 @@
 import cookieParser from "cookie-parser";
 import express, { type Express, type NextFunction, type Request, type Response } from "express";
-import type { Pool } from "pg";
 
-import type { KataSandi } from "./ports/kata-sandi.js";
+import type { DependensiApp } from "./dependensi-app.js";
 import { KODE, kirimKesalahan } from "./routes/amplop.js";
+import { rutaTemplat } from "./routes/administrasi/templat.js";
 import { rutaAuth } from "./routes/auth.js";
 import { rutaHealthz } from "./routes/healthz.js";
 import { rutaSaya } from "./routes/saya.js";
 
 // Express biasa. Aplikasi tidak mengetahui keberadaan Lambda maupun AWS
 // — ARCHITECTURE.md Pasal 6 dan sec 5.1.
-export function buatApp(deps: { pool: Pool; kataSandi: KataSandi }): Express {
+export function buatApp(deps: DependensiApp): Express {
   const app = express();
   app.disable("x-powered-by");
   // Batas 2 MB mengikuti batas unggahan pada ARCHITECTURE.md Pasal 7.
@@ -20,6 +20,7 @@ export function buatApp(deps: { pool: Pool; kataSandi: KataSandi }): Express {
   app.use(rutaHealthz(deps.pool));
   app.use(rutaAuth(deps.pool, deps.kataSandi));
   app.use(rutaSaya(deps.pool, deps.kataSandi));
+  app.use(rutaTemplat(deps));
 
   // Alamat yang tidak dikenal tetap menjawab dengan amplop API.md sec 2.2,
   // bukan halaman HTML bawaan Express. Frontend hanya mengurai satu bentuk.
