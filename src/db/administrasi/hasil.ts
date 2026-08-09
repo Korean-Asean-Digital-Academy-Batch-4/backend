@@ -11,7 +11,8 @@ export type JenisGalatAdministrasi =
   | "komponen_sudah_dipakai"
   | "jenjang_tidak_cocok"
   | "bobot_tidak_seratus"
-  | "berkas_tidak_sah";
+  | "berkas_tidak_sah"
+  | "berkas_terlalu_besar";
 
 /** Hasil operasi administrasi yang dapat dipetakan langsung ke respons API. */
 export type HasilAdministrasi<T> =
