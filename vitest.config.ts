@@ -9,6 +9,7 @@ export default defineConfig({
     coverage: {
       provider: "v8",
       include: ["src/**"],
+      reporter: ["text", "json"],
       thresholds: {
         // AGENTS.md sec 4.1 — domain/ 100% cabang. Salah hitung di sana berarti
         // rapor siswa salah, dan tidak ada penjaga lain yang menangkapnya.

@@ -21,7 +21,11 @@
     "admin:create": "tsx src/entry/admin.ts",
     "seed:admin": "tsx src/entry/seed-admin.ts",
     "lint:migrations": "squawk migrations/*.sql",
-    "periksa": "npm run format:check && npm run lint && npm run typecheck && npm run coverage"
+    "periksa": "npm run format:check && npm run lint && npm run typecheck && npm run coverage",
+    "coverage:bersihkan": "node --input-type=module -e \"import{rmSync}from'node:fs';for(const p of['coverage/unit','coverage/db'])rmSync(p,{recursive:true,force:true})\"",
+    "coverage:unit-json": "vitest run --coverage --coverage.reporter=json --coverage.reportsDirectory=coverage/unit",
+    "coverage:db-json": "vitest run --config vitest.config.db.ts --coverage --coverage.reporter=json --coverage.reportsDirectory=coverage/db",
+    "coverage:gabung": "npm run coverage:bersihkan && npm run coverage:unit-json && npm run coverage:db-json && tsx scripts/cakupan-global.ts --ambang=0"
   },
   "dependencies": {
     "@node-rs/argon2": "^2.0.2",
@@ -36,11 +40,13 @@
     "@testcontainers/postgresql": "^12.1.0",
     "@types/cookie-parser": "^1.4.10",
     "@types/express": "^5.0.0",
+    "@types/istanbul-lib-coverage": "^2.0.6",
     "@types/node": "^22.10.2",
     "@types/pg": "^8.11.10",
     "@vitest/coverage-v8": "^2.1.8",
     "drizzle-kit": "^0.31.10",
     "eslint": "^9.17.0",
+    "istanbul-lib-coverage": "^3.2.2",
     "prettier": "^3.4.2",
     "squawk-cli": "^2.62.0",
     "tsx": "^4.19.2",

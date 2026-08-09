@@ -23,5 +23,10 @@ export default defineConfig({
     // Menyalakan kontainer PostgreSQL dan menerapkan sepuluh migrasi.
     hookTimeout: 120_000,
     testTimeout: 30_000,
+    coverage: {
+      provider: "v8",
+      include: ["src/**"],
+      reporter: ["text", "json"],
+    },
   },
 });
