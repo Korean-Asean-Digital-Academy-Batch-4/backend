@@ -37,7 +37,7 @@ const TERLALU_BESAR: HasilBacaMultipart = {
 
 export function bacaBerkasMultipart(req: Request): Promise<HasilBacaMultipart> {
   if (requestSudahBerakhir(req)) {
-    if (!req.destroyed) req.resume();
+    kurasRequestDenganAman(req);
     return Promise.resolve(TIDAK_SAH);
   }
 
@@ -88,7 +88,7 @@ export function bacaBerkasMultipart(req: Request): Promise<HasilBacaMultipart> {
         aliranBerkas.on("error", abaikanGalatDrain);
       }
       pengurai.destroy();
-      if (req.readableEnded || req.closed) lepasPenjagaDrain();
+      if (req.readableEnded || req.closed) setImmediate(lepasPenjagaDrain);
     };
 
     const tuntaskan = (hasil: HasilBacaMultipart): void => {
@@ -170,8 +170,8 @@ function kurasRequestDenganAman(req: Request): void {
   req.once("end", selesai);
   req.once("close", selesai);
   if (req.readableEnded || req.closed) {
-    selesai();
+    setImmediate(selesai);
     return;
   }
-  req.resume();
+  if (!req.destroyed && !req.readableEnded) req.resume();
 }

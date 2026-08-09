@@ -1,3 +1,4 @@
+import { once } from "node:events";
 import { PassThrough, Readable } from "node:stream";
 
 import type { Request } from "express";
@@ -137,6 +138,23 @@ describe("bacaBerkasMultipart", () => {
 
     expect(hasil).not.toBe("waktu-habis");
     expect(hasil).toMatchObject({ berhasil: false, status: 400 });
+    expect(sumber.listenerCount("error")).toBeGreaterThan(0);
+    expect(() => sumber.emit("error", new Error("galat jaringan setelah putus"))).not.toThrow();
+  });
+
+  it("melepas penjaga ketika request sudah sepenuhnya ditutup", async () => {
+    const sumber = new PassThrough();
+    const req = sumber as unknown as Request;
+    req.headers = { "content-type": `multipart/form-data; boundary=${BATAS}` };
+    sumber.destroy();
+    await once(sumber, "close");
+
+    await expect(bacaBerkasMultipart(req)).resolves.toMatchObject({ berhasil: false, status: 400 });
+    await new Promise<void>((selesai) => setImmediate(selesai));
+
+    expect(sumber.listenerCount("error")).toBe(0);
+    expect(sumber.listenerCount("end")).toBe(0);
+    expect(sumber.listenerCount("close")).toBe(0);
   });
 
   it("menahan galat jaringan yang datang ketika sisa request sedang dikuras", async () => {

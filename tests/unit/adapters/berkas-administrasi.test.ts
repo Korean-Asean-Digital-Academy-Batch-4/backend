@@ -86,6 +86,18 @@ describe("uraiAkunCsv", () => {
     });
   });
 
+  it.each([
+    [" Nama,NIP", "guru"],
+    ["Nama ,NIP", "guru"],
+    ["Nama, NIP", "guru"],
+    ["Nama,NIP ", "guru"],
+    [" Nama , NIS ", "siswa"],
+  ] as const)("menolak whitespace yang mengubah kepala CSV: %s", async (kepala, peran) => {
+    await expect(
+      berkas.uraiAkunCsv(Buffer.from(`${kepala}\nAndi,001`), peran),
+    ).resolves.toMatchObject({ berhasil: false });
+  });
+
   it("melaporkan setiap bidang kosong dan identitas bukan angka", async () => {
     const hasil = await berkas.uraiAkunCsv(
       Buffer.from("Nama,NIP\n,abc\nBudi,\n,123\nCitra,456"),

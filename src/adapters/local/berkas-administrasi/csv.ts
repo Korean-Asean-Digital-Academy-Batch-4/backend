@@ -24,7 +24,7 @@ export async function uraiAkunCsv(
       columns: false,
       max_record_size: 4096,
       skip_empty_lines: false,
-      trim: true,
+      trim: false,
     });
     const semua: string[][] = [];
 
@@ -48,8 +48,8 @@ export async function uraiAkunCsv(
     const bermasalah: RincianBerkas[] = [];
     for (let indeks = 1; indeks < semua.length; indeks += 1) {
       const baris = semua[indeks]!;
-      const nama = baris[0] ?? "";
-      const namaPengguna = baris[1] ?? "";
+      const nama = (baris[0] ?? "").trim();
+      const namaPengguna = (baris[1] ?? "").trim();
       const sebab = rincianAkun(nama, namaPengguna, kepalaPengenal);
       if (sebab.length > 0) {
         bermasalah.push({ baris: indeks + 1, sebab: sebab.join("; ") });
