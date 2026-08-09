@@ -1,3 +1,4 @@
+import { kataSandiArgon2id } from "../adapters/local/kata-sandi.js";
 import { buatApp } from "../app.js";
 import { bacaKonfigurasi } from "../config.js";
 import { buatPool } from "../db/index.js";
@@ -6,7 +7,7 @@ import { buatPool } from "../db/index.js";
 // menjalankan container yang sama dengan on-prem — ARCHITECTURE.md sec 5.1.
 const konfigurasi = bacaKonfigurasi();
 const pool = buatPool(konfigurasi);
-const app = buatApp({ pool });
+const app = buatApp({ pool, kataSandi: kataSandiArgon2id() });
 
 const server = app.listen(konfigurasi.PORT, () => {
   console.log(`edutrack-api mendengarkan di port ${konfigurasi.PORT}`);

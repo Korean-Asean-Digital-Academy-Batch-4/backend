@@ -8,6 +8,18 @@ export default tseslint.config(
   js.configs.recommended,
   ...tseslint.configs.recommended,
 
+  // Penangan galat Express dikenali dari jumlah argumennya — empat, tepat.
+  // Argumen keempat yang tidak terpakai karenanya syarat kerangka kerja, bukan
+  // kelalaian. Awalan garis bawah menyatakan ketidakterpakaiannya disengaja.
+  {
+    rules: {
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        { argsIgnorePattern: "^_", varsIgnorePattern: "^_", caughtErrorsIgnorePattern: "^_" },
+      ],
+    },
+  },
+
   // domain/ tanpa I/O sama sekali. Salah hitung di sini berarti rapor siswa salah,
   // sehingga ia harus dapat diuji tanpa basis data dan tanpa AWS.
   {

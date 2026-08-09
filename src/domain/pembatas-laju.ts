@@ -7,8 +7,19 @@
  * menghitung jendelanya; penyimpanannya ada pada `db/pembatas-laju.ts`.
  */
 
-/** Lima percobaan **gagal** — ARCHITECTURE.md Pasal 7. */
+/** Lima kegagalan per akun — ARCHITECTURE.md Pasal 7, CK-A-08. */
 export const BATAS_MASUK = 5;
+
+/**
+ * Tiga puluh kegagalan per alamat IP — CK-A-08.
+ *
+ * Sengaja jauh lebih longgar daripada batas per akun. Satu sekolah kerap berada
+ * di balik satu alamat publik, sehingga ambang yang sama akan mengunci seluruh
+ * sekolah karena kesalahan ketik beberapa orang. Lapis ini bukan untuk menahan
+ * serangan atas satu akun — itu tugas BATAS_MASUK — melainkan untuk menahan
+ * penyemprotan satu kata sandi atas ratusan akun sekaligus.
+ */
+export const BATAS_MASUK_IP = 30;
 
 /** Lima belas menit — ARCHITECTURE.md Pasal 7. */
 export const JENDELA_MASUK_MS = 15 * 60 * 1000;

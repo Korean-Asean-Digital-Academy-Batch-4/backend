@@ -56,10 +56,12 @@ export async function catatKegagalan(
 ): Promise<void> {
   const mulai = awalJendela(sekarang, panjangJendelaMs);
 
-  await pool.query(`DELETE FROM pembatas_laju WHERE kunci = $1 AND jendela_mulai < $2`, [
-    kunci,
-    mulai,
-  ]);
+  // Pembersihan LINTAS KUNCI, bukan hanya kunci ini. Kunci diturunkan dari
+  // nama pengguna yang dikirim klien, sehingga permintaan dengan nama karangan
+  // yang selalu berbeda menghasilkan baris yang tidak akan pernah dipakai lagi
+  // — dan pembersihan per kunci tidak akan pernah menyentuhnya. Tabel dengan
+  // demikian tetap terbatas pada jendela berjalan tanpa worker (CK-07).
+  await pool.query(`DELETE FROM pembatas_laju WHERE jendela_mulai < $1`, [mulai]);
   await pool.query(
     `INSERT INTO pembatas_laju (kunci, jendela_mulai, jumlah) VALUES ($1, $2, 1)
      ON CONFLICT (kunci, jendela_mulai) DO UPDATE SET jumlah = pembatas_laju.jumlah + 1`,

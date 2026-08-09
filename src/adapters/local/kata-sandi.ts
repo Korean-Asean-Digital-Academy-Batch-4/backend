@@ -66,6 +66,12 @@ export function buatKataSandiAwal(): string {
 }
 
 export function kataSandiArgon2id(): KataSandi {
+  // Dipanaskan sejak adapter dibuat. Tanpa ini, permintaan PERTAMA atas akun
+  // yang tidak ada sesudah setiap cold start menanggung satu hash Argon2id
+  // tambahan di atas verifikasinya — selisih waktu yang, meskipun sempit,
+  // justru merupakan hal yang hendak dihapus verifikasiTiruan.
+  void tiruan();
+
   return {
     hash: (polos) => hash(polos, PILIHAN),
 
