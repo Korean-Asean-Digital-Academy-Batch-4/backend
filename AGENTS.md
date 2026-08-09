@@ -2,8 +2,8 @@
 
 | Keterangan | Isi |
 |---|---|
-| **Versi** | v2.1 |
-| **Tanggal** | 7 Agustus 2026 |
+| **Versi** | v2.2 |
+| **Tanggal** | 8 Agustus 2026 |
 | **Disusun oleh** | Re:Code |
 | **Kedudukan** | Menetapkan **bagaimana agen membangun EduTrack** di atas dokumen yang sudah terkunci. Berada di luar rantai penguncian dan tidak menetapkan apa pun tentang produk |
 | **Kerangka kerja** | [ECC](https://github.com/affaan-m/ecc) — aturan, agen, dan perintah yang terpasang pada `~/.claude/` |
@@ -118,7 +118,15 @@ Selesaikan seluruh temuan **CRITICAL** dan **HIGH** sebelum commit. **MEDIUM** d
 
 **Bukti, bukan klaim.** Jangan pernah menyatakan sesuatu selesai, lulus, atau diperbaiki tanpa menjalankan perintahnya dan membaca keluarannya. Kalau tes gagal, katakan gagal beserta keluarannya. Kalau satu langkah dilewati, katakan dilewati.
 
-Sebelum commit: format, lint, `tsc --noEmit`, tes, dan cakupan.
+Sebelum commit, ketiga perintah berikut wajib bersih. Ketiganya terpisah karena yang kedua dan ketiga menuntut hal yang tidak selalu ada di mesin mana pun:
+
+```bash
+npm run periksa          # format, lint, tsc --noEmit, tes, dan cakupan
+npm run lint:migrations  # lapis 2 §5.3 — menuntut squawk terpasang
+npm run test:db          # bukti penegakan basis data §4.2 — menuntut Docker
+```
+
+`npm run periksa` menjalankan `coverage`, bukan `test`, sehingga ambang cakupan §4.1 ikut menggerbang. Menjalankan `npm test` saja melewati ambangnya tanpa terlihat.
 
 ### Fase 5 — Commit dan push
 
@@ -192,11 +200,17 @@ Kelimanya adalah **sasaran utama uji integrasi**, bukan sasaran sampingan.
 
 ### 4.1 Sasaran cakupan
 
-| Bagian | Sasaran | Alasan |
-|---|--:|---|
-| Global | **80%** | Aturan ECC |
-| `domain/` | **100% cabang** | Salah hitung berarti rapor siswa salah, dan tidak ada yang menangkapnya |
-| Lima invarian §3.3 | seluruhnya | Tidak ada penjaga lain |
+| Bagian | Sasaran | Ditegakkan sejak | Alasan |
+|---|--:|---|---|
+| `domain/` | **100%** pada keempat metrik | A3 | Salah hitung berarti rapor siswa salah, dan tidak ada yang menangkapnya |
+| Global | **80%** | **A5** | Aturan ECC |
+| Lima invarian §3.3 | seluruhnya | A3 dan seterusnya | Tidak ada penjaga lain |
+
+`domain/` dipatok pada keempat metrik, bukan cabangnya saja: fungsi domain yang tidak pernah dipanggil sama sekali juga tidak terbukti benar.
+
+**Ambang global menunggu A5, dan itu disengaja.** Cakupan diukur dua suite terpisah — `npm test` dan `npm run test:db` — karena yang kedua menuntut Docker sehingga tidak dapat digabung ke dalam satu perintah yang selalu dapat berjalan. Sebelum lapisan rute ada, angkanya hanya dapat dicapai dengan mengecualikan separuh `src/`, dan ambang yang dicapai lewat pengecualian tidak menjaga apa pun.
+
+**Ambang cakupan wajib dibuktikan dapat merah.** Glob yang salah tulis tidak menghasilkan peringatan apa pun; ia hanya diam dan lolos. Setiap kali ambang dipasang atau diubah, pindahkan sementara ke bagian yang cakupannya rendah, pastikan `npm run coverage` gagal, lalu kembalikan.
 
 ### 4.2 Pembuktian penegakan basis data
 
@@ -221,6 +235,16 @@ UPDATE rapor SET status = 'draft' WHERE status = 'finalized';
 ```
 
 Perbedaannya menentukan. Membaca kode membuktikan **jalur yang ada hari ini** tidak melanggar; penolakan basis data membuktikan **jalur mana pun tidak akan bisa**.
+
+Dijalankan lewat perintahnya sendiri, terpisah dari `npm run periksa`:
+
+```bash
+npm run test:db
+```
+
+Suite ini menyalakan PostgreSQL 17 sungguhan lewat Testcontainers, menerapkan seluruh migrasi, lalu menjalankan pernyataan yang wajib gagal. Ia **tidak boleh diganti tiruan**: tiruan tidak dapat membuktikan apa pun tentang penolakan PostgreSQL.
+
+Karena satu kontainer dipakai bersama, tesnya berjalan berurutan dan setiap tes membungkus dirinya dalam transaksi yang selalu dibatalkan — sehingga kegagalan berarti pelanggaran invarian, bukan perlombaan antar tes. Benihnya menyediakan entitas cadangan yang belum terpakai, supaya penolakan yang diuji benar-benar penolakan yang dimaksud dan bukan constraint lain yang kebetulan menyala lebih dahulu.
 
 ### 4.3 Frontend
 
@@ -294,11 +318,24 @@ Penamaan berkas menyatakan fasenya: `0011_expand_*.sql`, `0013_contract_*.sql`.
 grep -rn "<nama_kolom>" src/
 ```
 
+**Setiap berkas menyusulkan dua baris batas** sesudah headernya. Rilis menunggu migrasi selesai ([DEPLOYMENT.md §3.3](../context/DEPLOYMENT.md) langkah 6), sehingga migrasi yang menggantung menahan seluruh rilis sambil memegang kunci:
+
+```sql
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '60s';
+```
+
+Migrasi yang memang memerlukan waktu lebih — misalnya pengisian data — menaikkan batasnya sendiri beserta alasannya.
+
 **Migrasi wajib lolos linter** sebelum di-commit:
 
 ```bash
-npx squawk migrations/*.sql
+npm run lint:migrations
 ```
+
+Konfigurasinya pada `.squawk.toml`, dan **namanya wajib berawalan titik** — `squawk.toml` diabaikan diam-diam tanpa peringatan apa pun, sehingga aturan yang dikecualikan tampak tidak berpengaruh. Di dalamnya `assume_in_transaction` dinyalakan karena penerap memang membungkus setiap berkas `BEGIN..COMMIT`. Setiap aturan yang dikecualikan wajib menyebut keputusan terkunci yang menjadi dasarnya; aturan yang menjaga `DROP COLUMN`, `DROP TABLE`, `RENAME COLUMN`, dan `NOT NULL` tanpa `DEFAULT` **tidak boleh dimatikan** tanpa amandemen DEPLOYMENT.md.
+
+**Migrasi yang sudah pernah diterapkan tidak boleh disunting.** Penerap mencatat sidik jari SHA-256 setiap berkas dan menolak melanjutkan apabila isinya berubah. Perbaikan ditulis sebagai migrasi baru, bukan sebagai suntingan atas yang lama.
 
 Enam lapis penjagaan beserta alasannya pada [DEPLOYMENT.md §6.5](../context/DEPLOYMENT.md) dan CK-D-03. Lapis 4 dan 5 — tes rilis sebelumnya terhadap skema baru, dan latihan rollback sungguhan — wajib ada **sebelum data sekolah sungguhan dimuat**.
 
@@ -326,6 +363,8 @@ Terpasang pada `~/.claude/`. Gunakan yang sudah ada; jangan menulis ulang kemamp
 | Menandai titik aman | — | `/checkpoint` |
 
 **Jalankan agen yang saling bebas secara paralel.** Tinjauan keamanan, tinjauan TypeScript, dan tinjauan basis data atas satu perubahan tidak saling bergantung, sehingga tidak ada alasan menjalankannya berurutan.
+
+**Ketika agen tidak tersedia.** Sebagian harness melarang agen memanggil subagen. Tinjauan umum boleh dikerjakan sendiri; **tinjauan keamanan tidak**. Untuk autentikasi, unggah, jalur AI, presigned URL, dan rahasia, agen yang tidak dapat memanggil `security-reviewer` **berhenti dan melapor** — bukan menggantinya dengan tinjauan sendiri, dan bukan pula melanjutkan diam-diam. Manusia menjalankan `/security-scan` sebelum commit, atau memberi izin memanggil agennya. Izin itu tidak pernah tersirat.
 
 **Pemilihan model** mengikuti ECC `common/performance.md`: Haiku untuk agen ringan yang sering dipanggil, Sonnet untuk pekerjaan pengembangan utama, Opus untuk keputusan arsitektural dan analisis mendalam.
 
@@ -436,13 +475,12 @@ Agen **berhenti dan melapor** ketika mencapai salah satu titik berikut. Tidak me
 | `terraform apply` | Peminjaman role `edutrack-terraform` | Sama |
 | Pembuatan keempat rahasia | Dibuat di luar Terraform | [Techstack §7](../context/Techstack.md) |
 | Pendaftaran OIDC provider dan role | Konsol AWS | Lihat [RUNBOOK-OIDC.md](../context/RUNBOOK-OIDC.md) |
-| Nama domain dan sertifikat | Belum diputuskan | Techstack §9 butir 4 |
-| **Jenjang sekolah** — SMA saja atau ada SMP | Jawaban sekolah | **S-04**, menentukan `CHECK` pada migrasi 0002 dan 0003 |
-| **Satu siswa satu kelas per semester** | Jawaban sekolah | **T-02**, ditegakkan `uq_kelas_siswa_periode` |
-| **Satu guru boleh wali lebih dari satu kelas** | Jawaban sekolah | **S-02**, ditegakkan `uq_kelas_wali_per_periode` |
+| **Nama domain dan sertifikat** | Nama yang sesungguhnya, beserta pembelian domainnya | Bentuk DNS sudah ditetapkan **CK-17**; yang belum ada hanya namanya — [Techstack §9](../context/Techstack.md) butir 4. **Dikerjakan paling akhir** |
 | Komponen dan bobot templat | Validasi sekolah **V1** | Hanya data, bukan skema. **Tidak menghalangi** |
 
-Tiga jawaban sekolah menghalangi migrasi bertemu **data sekolah sungguhan**, bukan menghalangi migrasinya ditulis dan diuji lokal. Agen tetap melanjutkan A2, dan melaporkan bahwa ketiganya belum terjawab.
+**Tiga pertanyaan sekolah sudah terjawab 8 Agustus 2026** dan tidak lagi menjadi titik henti: jenjang SMA saja (**S-04**), satu siswa satu kelas per semester (**T-02**), dan satu guru wali paling banyak satu kelas (**S-02**). Ketiganya sudah sesuai skema v1.0, sehingga tidak ada constraint yang berubah.
+
+**Nama domain adalah satu-satunya titik henti yang sengaja ditunda paling akhir.** Ia tidak menghalangi satu pun tahap Jalur A: CK-17 sudah menetapkan bentuk DNS untuk AWS maupun on-prem, sehingga Terraform, `install.sh`, dan `docker-compose.yml` on-prem dapat ditulis dan ditinjau lengkap tanpa domain. Yang menunggu hanyalah pengisian nilainya dan penerapannya.
 
 **Bentuk laporan berhenti:** sebutkan titik mana, apa yang dibutuhkan, apa yang sudah selesai, dan apa yang bisa dikerjakan sementara menunggu.
 
@@ -484,7 +522,7 @@ Urutan konkret dari `backend/` yang hanya berisi `README.md` sampai lingkungan l
 | 4 | `GET /healthz` yang memeriksa proses **dan** koneksi basis data | Menjawab `200` |
 | 5 | `Dockerfile` dengan Lambda Web Adapter | `docker build` berhasil |
 | 6 | `docker-compose.yml` dengan PostgreSQL 17 | `docker compose up` menyala, `/healthz` menjawab dari dalam container |
-| 7 | `migrations/` beserta konvensi header dan linter | `npm run lint:migrations` berjalan |
+| 7 | `migrations/` beserta konvensi header, `.squawk.toml`, dan langkah linter pada `pr.yml` | `npm run lint:migrations` **berjalan dan keluar dengan kode 0** |
 
 **Batas modul ditegakkan eslint, bukan diingat.** Aturan impor pada §3.1 dipasang sebagai galat lint, sehingga `domain/` yang mengimpor `pg` gagal saat `npm run periksa` — bukan ditemukan saat tinjauan. Ini penerapan Prinsip ④ pada susunan berkas.
 
@@ -518,6 +556,14 @@ Repositori ini membawa konfigurasinya sendiri pada `.mcp.json`, sehingga agen ma
 
 Bentuk simpanan mengikuti anjuran engram: **judul, jenis, lalu Apa / Kenapa / Di mana / Yang dipelajari.**
 
+**Apabila MCP-nya tidak tersambung**, ketiga langkah di atas tetap dapat dijalankan lewat CLI dengan nama proyek disebut eksplisit. Jangan melewatinya hanya karena alatnya tidak muncul sebagai MCP:
+
+```bash
+engram context edutrack-backend
+engram search "<kata kunci>" --project edutrack-backend
+engram save "<judul>" "<isi>" --type <jenis> --project edutrack-backend
+```
+
 **Yang tidak boleh disimpan — ini yang paling menentukan.** Jangan menyalin isi dokumen ke dalam engram. Invarian, keputusan, kontrak endpoint, dan aturan migrasi sudah tercatat pada `context/`, dan menyalinnya menghasilkan **sumber kedua yang akan menyimpang**. Persoalan yang sama sudah dilawan di seluruh proyek ini.
 
 Simpan yang **tidak** dicatat dokumen: kenapa sebuah pendekatan dicoba lalu ditinggalkan, jebakan yang baru ketahuan saat menjalankan, keadaan pekerjaan saat sesi berhenti di tengah.
@@ -542,7 +588,9 @@ graphify query "..."    # tanya graf yang sudah ada
 
 `graphify-out/` **tidak dilacak git** — ia selalu dapat dibangun ulang, dan versinya akan bertabrakan pada setiap penggabungan.
 
-**Batas yang berlaku hari ini.** Korpus kode saja tidak memerlukan kunci API, tetapi berkas dokumen memerlukannya untuk penyarian semantik. Selama kunci belum disetel, graf hanya mencakup kode. Pada tahap A0 dan A1 isinya masih tujuh belas simpul, sehingga manfaatnya baru terasa mulai A4 ketika rute dan skema sudah banyak.
+**Batas yang berlaku hari ini.** Korpus kode saja tidak memerlukan kunci API, tetapi berkas dokumen memerlukannya untuk penyarian semantik. Selama kunci belum disetel, graf hanya mencakup kode.
+
+`graphify-out/` belum pernah dibangun pada repositori ini. Manfaatnya baru terasa mulai A5 ketika rute sudah banyak; sampai saat itu, membangunnya hanya menambah langkah tanpa menjawab pertanyaan yang belum terjawab pembacaan biasa.
 
 Menyetel kunci API adalah keputusan pemilik mesin dan tidak dilakukan agen.
 
@@ -556,3 +604,5 @@ Menyetel kunci API adalah keputusan pemilik mesin dan tidak dilakukan agen.
 | 7 Agustus 2026 | §5.3 diperluas: lima aturan migrasi dinyatakan lengkap, ditambah header klasifikasi wajib, konvensi penamaan `expand`/`contract`, kewajiban `grep` sebelum `contract`, dan kewajiban lolos `squawk`. Mengikuti [DEPLOYMENT.md §6.5](../context/DEPLOYMENT.md) dan CK-D-03 |
 | 7 Agustus 2026 | **Versi 2.0.** Pasal 8 ditulis ulang menjadi **dua jalur yang berjalan bersamaan** — Jalur A dikerjakan agen tanpa menyentuh AWS, Jalur B dikerjakan manusia — karena setiap jalur menuju kuasa AWS menuntut kode MFA sehingga agen tidak dapat menaikkan infrastruktur. Ditambahkan **§10 titik henti manusia**, **§11 git dan pemulihan** yang mengikat riwayat git pada rantai pemulihan produksi, dan **§12 memulai dari repositori kosong** |
 | 7 Agustus 2026 | Ditambahkan **§13 alat bantu ingatan dan penelusuran**: `engram` sebagai ingatan lintas sesi lewat MCP dengan nama proyek dipatok eksplisit, dan `graphify` sebagai graf pengetahuan atas kode. Ditegaskan bahwa keduanya tidak pernah menjadi sumber kebenaran, dan isi dokumen `context/` tidak boleh disalin ke dalam engram karena menghasilkan sumber kedua yang akan menyimpang |
+| 8 Agustus 2026 | **Versi 2.2 — disesuaikan dengan apa yang terbukti pada A2 dan A3.** §2 Fase 4 kini menyebut tiga perintah gerbang secara eksplisit, karena `npm run periksa` sendirian tidak menjalankan linter migrasi maupun bukti penegakan basis data. §4.1 menyatakan ambang `domain/` dipatok pada keempat metrik dan ambang global 80% baru menyala pada A5 beserta alasannya, serta mewajibkan setiap ambang dibuktikan dapat merah sebelum dipercaya. §4.2 menyebut perintah yang menjalankannya beserta alasan tesnya berurutan dan berbenih cadangan. §5.3 diperluas dengan baris `SET LOCAL` batas kunci dan batas pernyataan, konfigurasi `.squawk.toml` yang wajib berawalan titik, dan larangan menyunting migrasi yang sudah diterapkan. §6 menetapkan apa yang dilakukan ketika harness melarang pemanggilan subagen: tinjauan keamanan **berhenti dan melapor**, tidak diganti tinjauan sendiri. §12 langkah 7 dan §13 disesuaikan dengan keadaan yang sebenarnya |
+| 8 Agustus 2026 | §10 disesuaikan. Tiga pertanyaan sekolah — S-04, T-02, dan S-02 — sudah terjawab dan dikeluarkan dari daftar titik henti; barisnya diganti satu paragraf yang mencatat jawabannya. Baris nama domain diperbarui mengikuti **CK-17**: yang belum ada hanya namanya, bentuk DNS-nya sudah ditetapkan, dan penerapannya **sengaja dikerjakan paling akhir** tanpa menahan satu pun tahap Jalur A |

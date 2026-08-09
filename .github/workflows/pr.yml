@@ -26,7 +26,8 @@ jobs:
       # RENAME COLUMN, dan NOT NULL tanpa DEFAULT sebelum sampai ke peninjau.
       - run: npm run lint:migrations
       - run: npm run typecheck
-      - run: npm test
+      # Cakupan sekaligus tes: ambang domain/ 100% ditegakkan di sini (AGENTS sec 4.1).
+      - run: npm run coverage
       # Bukti penegakan basis data — AGENTS.md sec 4.2. Menyalakan PostgreSQL 17
       # sungguhan lewat Testcontainers, lalu menjalankan pernyataan yang wajib gagal.
       - run: npm run test:db
