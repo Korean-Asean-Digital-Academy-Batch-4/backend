@@ -14,9 +14,16 @@ SET LOCAL statement_timeout = '60s';
 -- edutrack_owner TIDAK dibuat di sini — ia yang menjalankan migrasi ini.
 
 -- CK-S-09. Tanpa kata sandi: nilainya ditetapkan di luar migrasi (Techstack sec 7
--- butir 1), sehingga tidak ada satu pun kata sandi di dalam repositori. Penjaga
--- IF NOT EXISTS diperlukan karena role bersifat lintas basis data dalam satu
--- cluster, bukan milik satu basis data.
+-- butir 1), sehingga tidak ada satu pun kata sandi di dalam repositori.
+--
+-- JENDELA INI TIDAK DITUTUP OLEH MIGRASI. Role LOGIN tanpa kata sandi ditolak
+-- scram-sha-256, md5, dan password, tetapi DITERIMA trust, peer, dan cert.
+-- Yang menutupnya adalah metode otentikasi cluster pada pg_hba.conf, yang berada
+-- di luar jangkauan migrasi. Penerapan wajib menetapkan kata sandi kedua role dan
+-- memverifikasi metode otentikasinya sebelum layanan menyala — temuan S-06.
+--
+-- Penjaga IF NOT EXISTS diperlukan karena role bersifat lintas basis data dalam
+-- satu cluster, bukan milik satu basis data.
 DO $$
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'app_rw') THEN

@@ -19,7 +19,7 @@
     "coverage": "vitest run --coverage",
     "db:generate": "drizzle-kit generate",
     "lint:migrations": "squawk migrations/*.sql",
-    "periksa": "npm run format:check && npm run lint && npm run typecheck && npm test"
+    "periksa": "npm run format:check && npm run lint && npm run typecheck && npm run coverage"
   },
   "dependencies": {
     "drizzle-orm": "^0.45.2",
