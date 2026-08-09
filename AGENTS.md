@@ -18,7 +18,7 @@
 >
 > ```
 > ~/Documents/Edudex/
-> ├── context/   ← sepuluh dokumen
+> ├── context/   ← dokumen sumber kebenaran
 > └── backend/   ← repositori ini
 > ```
 
@@ -532,7 +532,7 @@ Sesudah langkah 7, agen melanjutkan ke A2 dan tidak lagi memerlukan apa pun dari
 
 ## 13. Alat bantu ingatan dan penelusuran
 
-Dua alat terpasang pada mesin pengembang. Keduanya **membantu agen**, dan tidak satu pun menjadi sumber kebenaran — sumber kebenaran tetap sepuluh dokumen pada `context/`.
+Dua alat terpasang pada mesin pengembang. Keduanya **membantu agen**, dan tidak satu pun menjadi sumber kebenaran — sumber kebenaran tetap dokumen pada `context/`.
 
 ### 13.1 engram — ingatan lintas sesi
 
@@ -576,23 +576,49 @@ engram setup claude-code
 
 ### 13.2 graphify — graf pengetahuan atas kode
 
-`graphify` mengubah satu folder menjadi graf yang dapat ditanyai, sehingga pertanyaan arsitektur dijawab dari graf alih-alih dengan membaca ulang berkas. Penghematan token datang dari situ.
+`graphify` mengubah repositori ini menjadi graf yang dapat ditanyai, sehingga pertanyaan arsitektur dijawab dari graf alih-alih dengan membaca ulang berkas. Penghematan token datang dari situ.
+
+**Grafnya sudah dibangun.** Keadaan pada 8 Agustus 2026, sesudah A4:
+
+| | |
+|---|---|
+| Simpul | 354 — 309 dari AST, 45 dari penyarian dokumen |
+| Sisi | 600 |
+| Komunitas | 20, seluruhnya sudah berlabel |
+| Korpus | 84 berkas, ~31.000 kata |
+| Keluaran | `graphify-out/graph.html`, `GRAPH_REPORT.md`, `graph.json` |
+
+#### Kewajiban
+
+**Tanya graf lebih dahulu, baca berkas belakangan.** Untuk pertanyaan yang bentuknya "apa yang memanggil X", "bagaimana Y terhubung ke Z", atau "di mana Q dipakai", jalankan kueri sebelum membuka satu berkas pun:
 
 ```bash
-graphify .              # bangun atau bangun ulang
-graphify . --update     # inkremental, hanya berkas yang berubah
-graphify query "..."    # tanya graf yang sudah ada
+graphify query "apa yang memanggil periksaBatas"
+graphify path "rutaAuth" "pembatas_laju"      # jalur terpendek dua simpul
+graphify explain "cariSesiSah"                # penjelasan satu simpul
 ```
 
-**Jalankan `--update` setelah satu tahap §8.1 selesai**, bukan setiap kali menyimpan berkas.
+Membaca ulang lima berkas untuk menjawab satu pertanyaan hubungan adalah pemborosan yang sudah ada alatnya.
 
-`graphify-out/` **tidak dilacak git** — ia selalu dapat dibangun ulang, dan versinya akan bertabrakan pada setiap penggabungan.
+**Perbarui sesudah satu tahap §8.1 selesai**, bukan setiap kali menyimpan berkas:
 
-**Batas yang berlaku hari ini.** Korpus kode saja tidak memerlukan kunci API, tetapi berkas dokumen memerlukannya untuk penyarian semantik. Selama kunci belum disetel, graf hanya mencakup kode.
+```bash
+graphify . --update     # inkremental, hanya berkas yang berubah
+```
 
-`graphify-out/` belum pernah dibangun pada repositori ini. Manfaatnya baru terasa mulai A5 ketika rute sudah banyak; sampai saat itu, membangunnya hanya menambah langkah tanpa menjawab pertanyaan yang belum terjawab pembacaan biasa.
+Tahap yang menambah lapisan baru — rute, tabel, adapter — mengubah bentuk graf secara berarti. Suntingan di dalam satu fungsi tidak.
 
-Menyetel kunci API adalah keputusan pemilik mesin dan tidak dilakukan agen.
+#### Batas yang wajib diingat
+
+**Graf bukan sumber kebenaran, dan tidak pernah menjadi.** Apabila graf dan dokumen `context/` berbeda, **dokumen yang berlaku** — tanpa pengecualian. Graf diturunkan dari kode; kode diturunkan dari dokumen. Membalik urutan itu menjadikan kekeliruan kode tampak seperti ketentuan.
+
+**Graf boleh usang, dan tidak memberi tahu ketika usang.** Ia memotret keadaan pada saat dibangun. Sesudah tahap baru selesai tanpa `--update`, jawabannya menyesatkan dengan percaya diri. Inilah alasan pembaruannya diikat pada gerbang tahap, bukan pada kebiasaan.
+
+**Pemeriksaan kesehatan menandai 134 sisi berujung menggantung.** Sebabnya penyarian dokumen menghasilkan pengenal simpul yang tidak selalu cocok dengan pengenal yang dibangkitkan AST, sehingga sebagian sisi menunjuk simpul yang tidak ada. Akibatnya: **hubungan yang dilaporkan graf sahih, tetapi ketiadaan hubungan tidak membuktikan apa-apa.** Graf boleh dipakai menemukan, tidak boleh dipakai menyimpulkan bahwa sesuatu tidak terhubung.
+
+**`graphify-out/` tidak dilacak git** — ia selalu dapat dibangun ulang, dan versinya akan bertabrakan pada setiap penggabungan. Sudah tercantum pada `.gitignore`. Cache penyarian di dalamnya membuat `--update` berikutnya hanya membayar berkas yang berubah.
+
+**Kunci API belum disetel.** Kode diekstrak lewat AST tanpa LLM dan tanpa biaya; dokumen disarikan agen yang sedang berjalan. Menyetel `GEMINI_API_KEY` memindahkan penyarian dokumen ke Gemini dan mempercepatnya, dan itu keputusan pemilik mesin — bukan agen.
 
 ---
 
@@ -606,3 +632,4 @@ Menyetel kunci API adalah keputusan pemilik mesin dan tidak dilakukan agen.
 | 7 Agustus 2026 | Ditambahkan **§13 alat bantu ingatan dan penelusuran**: `engram` sebagai ingatan lintas sesi lewat MCP dengan nama proyek dipatok eksplisit, dan `graphify` sebagai graf pengetahuan atas kode. Ditegaskan bahwa keduanya tidak pernah menjadi sumber kebenaran, dan isi dokumen `context/` tidak boleh disalin ke dalam engram karena menghasilkan sumber kedua yang akan menyimpang |
 | 8 Agustus 2026 | **Versi 2.2 — disesuaikan dengan apa yang terbukti pada A2 dan A3.** §2 Fase 4 kini menyebut tiga perintah gerbang secara eksplisit, karena `npm run periksa` sendirian tidak menjalankan linter migrasi maupun bukti penegakan basis data. §4.1 menyatakan ambang `domain/` dipatok pada keempat metrik dan ambang global 80% baru menyala pada A5 beserta alasannya, serta mewajibkan setiap ambang dibuktikan dapat merah sebelum dipercaya. §4.2 menyebut perintah yang menjalankannya beserta alasan tesnya berurutan dan berbenih cadangan. §5.3 diperluas dengan baris `SET LOCAL` batas kunci dan batas pernyataan, konfigurasi `.squawk.toml` yang wajib berawalan titik, dan larangan menyunting migrasi yang sudah diterapkan. §6 menetapkan apa yang dilakukan ketika harness melarang pemanggilan subagen: tinjauan keamanan **berhenti dan melapor**, tidak diganti tinjauan sendiri. §12 langkah 7 dan §13 disesuaikan dengan keadaan yang sebenarnya |
 | 8 Agustus 2026 | §10 disesuaikan. Tiga pertanyaan sekolah — S-04, T-02, dan S-02 — sudah terjawab dan dikeluarkan dari daftar titik henti; barisnya diganti satu paragraf yang mencatat jawabannya. Baris nama domain diperbarui mengikuti **CK-17**: yang belum ada hanya namanya, bentuk DNS-nya sudah ditetapkan, dan penerapannya **sengaja dikerjakan paling akhir** tanpa menahan satu pun tahap Jalur A |
+| 8 Agustus 2026 | §13.2 ditulis ulang sesudah graf benar-benar dibangun: 354 simpul, 600 sisi, 20 komunitas berlabel. Ditetapkan **kewajiban menanyai graf lebih dahulu** untuk pertanyaan hubungan, dan pembaruan diikat pada gerbang tahap §8.1. Dicatat pula tiga batasnya — graf bukan sumber kebenaran, graf boleh usang tanpa memberi tahu, dan 134 sisi berujung menggantung menjadikan **ketiadaan hubungan tidak membuktikan apa-apa** |
