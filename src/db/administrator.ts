@@ -1,11 +1,15 @@
 import type { Pool } from "pg";
 
-import { buatKataSandiAwal } from "../adapters/local/kata-sandi.js";
 import type { KataSandi } from "../ports/kata-sandi.js";
 import { cabutSeluruhSesi } from "./sesi.js";
 
 /**
  * Pembuatan dan penggantian kata sandi akun Administrator — ARCHITECTURE.md §9.3.
+ *
+ * Kata sandi selalu diterima sebagai argumen, tidak pernah dibangkitkan di sini.
+ * Yang membangkitkan adalah pemanggilnya — `admin:create` membangkitkan lalu
+ * mencetaknya (P17), `seed:admin` membacanya dari stdin (CK-A-09). Dengan satu
+ * jalur penyimpanan, keduanya tidak dapat menyimpang aturan hash-nya.
  *
  * Aplikasi **tidak memiliki layar maupun endpoint** pembuatan akun Administrator
  * dalam bentuk apa pun. Jalurnya hanya perintah CLI, sehingga tidak ada kata
@@ -25,8 +29,8 @@ export async function buatAdministrator(
   kataSandi: KataSandi,
   namaPengguna: string,
   nama: string,
+  kataSandiAwal: string,
 ): Promise<HasilAdministrator> {
-  const kataSandiAwal = buatKataSandiAwal();
   const hash = await kataSandi.hash(kataSandiAwal);
 
   try {
@@ -62,8 +66,8 @@ export async function gantiKataSandi(
   pool: Pool,
   kataSandi: KataSandi,
   namaPengguna: string,
+  kataSandiAwal: string,
 ): Promise<HasilAdministrator> {
-  const kataSandiAwal = buatKataSandiAwal();
   const hash = await kataSandi.hash(kataSandiAwal);
 
   const hasil = await pool.query<{ id: string }>(

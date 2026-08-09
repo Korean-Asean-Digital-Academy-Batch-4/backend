@@ -19,6 +19,7 @@
     "coverage": "vitest run --coverage",
     "db:generate": "drizzle-kit generate",
     "admin:create": "tsx src/entry/admin.ts",
+    "seed:admin": "tsx src/entry/seed-admin.ts",
     "lint:migrations": "squawk migrations/*.sql",
     "periksa": "npm run format:check && npm run lint && npm run typecheck && npm run coverage"
   },

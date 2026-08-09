@@ -1,6 +1,6 @@
 import { parseArgs } from "node:util";
 
-import { kataSandiArgon2id } from "../adapters/local/kata-sandi.js";
+import { buatKataSandiAwal, kataSandiArgon2id } from "../adapters/local/kata-sandi.js";
 import { bacaKonfigurasi } from "../config.js";
 import { buatAdministrator, gantiKataSandi } from "../db/administrator.js";
 import { buatPool } from "../db/index.js";
@@ -55,9 +55,16 @@ const pool = buatPool(bacaKonfigurasi());
 const kataSandi = kataSandiArgon2id();
 
 try {
+  const kataSandiAwal = buatKataSandiAwal();
   const hasil = values["ganti-kata-sandi"]
-    ? await gantiKataSandi(pool, kataSandi, namaPengguna)
-    : await buatAdministrator(pool, kataSandi, namaPengguna, values.nama ?? namaPengguna);
+    ? await gantiKataSandi(pool, kataSandi, namaPengguna, kataSandiAwal)
+    : await buatAdministrator(
+        pool,
+        kataSandi,
+        namaPengguna,
+        values.nama ?? namaPengguna,
+        kataSandiAwal,
+      );
 
   if (!hasil.berhasil) {
     berhenti(hasil.sebab);
