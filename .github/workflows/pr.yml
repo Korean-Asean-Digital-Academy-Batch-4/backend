@@ -22,7 +22,13 @@ jobs:
       - run: npm ci
       - run: npm run format:check
       - run: npm run lint
+      # Lapis 2 pada DEPLOYMENT.md sec 6.5 — menolak DROP COLUMN, DROP TABLE,
+      # RENAME COLUMN, dan NOT NULL tanpa DEFAULT sebelum sampai ke peninjau.
+      - run: npm run lint:migrations
       - run: npm run typecheck
       - run: npm test
+      # Bukti penegakan basis data — AGENTS.md sec 4.2. Menyalakan PostgreSQL 17
+      # sungguhan lewat Testcontainers, lalu menjalankan pernyataan yang wajib gagal.
+      - run: npm run test:db
       - name: Bangun image tanpa mendorongnya
         run: docker build -t edutrack-api:uji .
