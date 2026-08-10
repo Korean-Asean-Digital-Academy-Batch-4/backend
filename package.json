@@ -16,7 +16,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:db": "vitest run --config vitest.config.db.ts",
-    "coverage": "vitest run --coverage",
+    "coverage": "npm run coverage:global",
     "db:generate": "drizzle-kit generate",
     "admin:create": "tsx src/entry/admin.ts",
     "seed:admin": "tsx src/entry/seed-admin.ts",
@@ -25,7 +25,8 @@
     "coverage:bersihkan": "node --input-type=module -e \"import{rmSync}from'node:fs';for(const p of['coverage/unit','coverage/db'])rmSync(p,{recursive:true,force:true})\"",
     "coverage:unit-json": "vitest run --coverage --coverage.reporter=json --coverage.reportsDirectory=coverage/unit",
     "coverage:db-json": "vitest run --config vitest.config.db.ts --coverage --coverage.reporter=json --coverage.reportsDirectory=coverage/db",
-    "coverage:gabung": "npm run coverage:bersihkan && npm run coverage:unit-json && npm run coverage:db-json && tsx scripts/cakupan-global.ts --ambang=0"
+    "coverage:gabung": "npm run coverage:bersihkan && npm run coverage:unit-json && npm run coverage:db-json && tsx scripts/cakupan-global.ts --ambang=0",
+    "coverage:global": "npm run coverage:bersihkan && npm run coverage:unit-json && npm run coverage:db-json && tsx scripts/cakupan-global.ts --ambang=80"
   },
   "dependencies": {
     "@node-rs/argon2": "^2.0.2",
