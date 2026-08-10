@@ -9,7 +9,7 @@ import { poolPemilik } from "./bantuan.js";
 
 export type AppUji = Readonly<{ asal: string; tutup: () => Promise<void> }>;
 export type PilihanJson = Readonly<{
-  metode?: "GET" | "POST" | "PATCH" | "PUT";
+  metode?: "GET" | "POST" | "PATCH" | "PUT" | "DELETE";
   sesi?: string;
   badan?: unknown;
 }>;
@@ -164,7 +164,7 @@ export async function masukSebagai(app: AppUji, namaPengguna: string): Promise<s
 }
 
 type PilihanPanggil = Readonly<{
-  metode?: "GET" | "POST" | "PATCH" | "PUT";
+  metode?: "GET" | "POST" | "PATCH" | "PUT" | "DELETE";
   sesi?: string;
   jenisIsi?: string;
   badan?: string | FormData;

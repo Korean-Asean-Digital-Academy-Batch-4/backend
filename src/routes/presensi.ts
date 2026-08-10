@@ -205,7 +205,7 @@ export function rutaPresensi(deps: Pick<DependensiApp, "pool" | "db">): Router {
         kirimKesalahan(res, 404, KODE.tidakDitemukan, "Sesi tidak ditemukan.");
         return;
       }
-      const akses = await periksaAksesPenugasan(sesi.penugasanRef, penuntut);
+      const akses = await periksaAksesPenugasan(sesi.penugasan_ref, penuntut);
       if (!akses.ok) {
         kirimKesalahan(res, akses.status, akses.kode, akses.pesan);
         return;

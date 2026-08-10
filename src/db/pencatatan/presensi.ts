@@ -37,7 +37,7 @@ export type SesiRingkas = Readonly<{
 }>;
 
 export type PresensiSiswa = Readonly<{
-  siswaRef: string;
+  siswa_ref: string;
   nama: string;
   status: StatusPresensi;
   catatan: string | null;
@@ -45,17 +45,17 @@ export type PresensiSiswa = Readonly<{
 
 export type SesiLengkap = Readonly<{
   id: string;
-  penugasanRef: string;
+  penugasan_ref: string;
   tanggal: string;
   presensi: readonly PresensiSiswa[];
 }>;
 
 export type RingkasanPresensiSiswa = Readonly<{
-  siswaRef: string;
+  siswa_ref: string;
   nama: string;
-  perMapel: readonly Readonly<{
-    mapelNama: string;
-    adaSesi: boolean;
+  per_mapel: readonly Readonly<{
+    mapel_nama: string;
+    ada_sesi: boolean;
     persen: number | null;
   }>[];
 }>;
@@ -85,7 +85,7 @@ export async function cariKonteksPenugasanPresensi(
 export async function daftarSiswaKelasPresensi(
   db: BasisData,
   kelasRef: string,
-): Promise<readonly Readonly<{ siswaRef: string; nama: string }>[]> {
+): Promise<readonly Readonly<{ siswa_ref: string; nama: string }>[]> {
   const baris = await db
     .select({ siswaRef: kelasSiswa.siswaRef, nama: pengguna.nama })
     .from(kelasSiswa)
@@ -93,7 +93,7 @@ export async function daftarSiswaKelasPresensi(
     .innerJoin(pengguna, eq(pengguna.id, kelasSiswa.siswaRef))
     .where(eq(kelasSiswa.kelasRef, kelasRef))
     .orderBy(asc(pengguna.nama), asc(kelasSiswa.siswaRef));
-  return Object.freeze(baris.map((b) => Object.freeze({ ...b })));
+  return Object.freeze(baris.map((b) => Object.freeze({ siswa_ref: b.siswaRef, nama: b.nama })));
 }
 
 /** Daftar sesi satu penugasan beserta ringkasan per status — API.md §7.4. */
@@ -104,7 +104,9 @@ export async function daftarSesiPenugasan(
   const baris = await db
     .select({
       id: sesi.id,
-      tanggal: sesi.tanggal,
+      // Kolom date dibaca sebagai teks YYYY-MM-DD persis seperti disimpan —
+      // bukan Date JS yang terserialisasi ISO berzona (API.md §7.2).
+      tanggal: sql<string>`${sesi.tanggal}::text`,
       hadir: sql<number>`count(*) filter (where ${presensi.status} = 'hadir')`,
       izin: sql<number>`count(*) filter (where ${presensi.status} = 'izin')`,
       sakit: sql<number>`count(*) filter (where ${presensi.status} = 'sakit')`,
@@ -134,7 +136,11 @@ export async function daftarSesiPenugasan(
 /** Satu sesi beserta seluruh status siswanya — API.md §7.4. */
 export async function bacaSesi(db: BasisData, sesiRef: string): Promise<SesiLengkap | undefined> {
   const [kepala] = await db
-    .select({ id: sesi.id, penugasanRef: sesi.penugasanRef, tanggal: sesi.tanggal })
+    .select({
+      id: sesi.id,
+      penugasanRef: sesi.penugasanRef,
+      tanggal: sql<string>`${sesi.tanggal}::text`,
+    })
     .from(sesi)
     .where(eq(sesi.id, sesiRef))
     .limit(1);
@@ -153,12 +159,12 @@ export async function bacaSesi(db: BasisData, sesiRef: string): Promise<SesiLeng
     .orderBy(asc(pengguna.nama), asc(presensi.siswaRef));
   return Object.freeze({
     id: kepala.id,
-    penugasanRef: kepala.penugasanRef,
+    penugasan_ref: kepala.penugasanRef,
     tanggal: kepala.tanggal,
     presensi: Object.freeze(
       baris.map((b) =>
         Object.freeze({
-          siswaRef: b.siswaRef,
+          siswa_ref: b.siswaRef,
           nama: b.nama,
           status: b.status as StatusPresensi,
           catatan: b.catatan,
@@ -256,7 +262,7 @@ export async function buatSesi(
           tanggal: input.tanggal,
           dibukaOleh: input.penuntut.penggunaRef,
         })
-        .returning({ id: sesi.id, tanggal: sesi.tanggal });
+        .returning({ id: sesi.id, tanggal: sql<string>`${sesi.tanggal}::text` });
       if (!baris) throw new Error("Pembuatan sesi tidak mengembalikan baris.");
 
       const statusPerSiswa = new Map(input.presensi.map((p) => [p.siswaRef, p]));
@@ -458,7 +464,9 @@ export async function presensiSiswaPerKelas(
   db: BasisData,
   kelasRef: string,
   siswaRef: string,
-): Promise<readonly Readonly<{ mapelNama: string; adaSesi: boolean; persen: number | null }>[]> {
+): Promise<
+  readonly Readonly<{ mapel_nama: string; ada_sesi: boolean; persen: number | null }>[]
+> {
   const penugasanKelas = await db
     .select({ id: penugasan.id, mapelNama: mapel.nama })
     .from(penugasan)
@@ -477,8 +485,8 @@ export async function presensiSiswaPerKelas(
     hasil.push(
       Object.freeze(
         kehadiran.adaSesi
-          ? { mapelNama: satu.mapelNama, adaSesi: true, persen: kehadiran.persen }
-          : { mapelNama: satu.mapelNama, adaSesi: false, persen: null },
+          ? { mapel_nama: satu.mapelNama, ada_sesi: true, persen: kehadiran.persen }
+          : { mapel_nama: satu.mapelNama, ada_sesi: false, persen: null },
       ),
     );
   }
@@ -493,8 +501,8 @@ export async function presensiSatuKelas(
   const anggota = await daftarSiswaKelasPresensi(db, kelasRef);
   const hasil: RingkasanPresensiSiswa[] = [];
   for (const satu of anggota) {
-    const perMapel = await presensiSiswaPerKelas(db, kelasRef, satu.siswaRef);
-    hasil.push(Object.freeze({ siswaRef: satu.siswaRef, nama: satu.nama, perMapel }));
+    const perMapel = await presensiSiswaPerKelas(db, kelasRef, satu.siswa_ref);
+    hasil.push(Object.freeze({ siswa_ref: satu.siswa_ref, nama: satu.nama, per_mapel: perMapel }));
   }
   return Object.freeze(hasil);
 }
