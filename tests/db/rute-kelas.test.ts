@@ -206,8 +206,15 @@ describe("validasi multipart pembuatan kelas", () => {
         admin,
       ),
       panggilKelas(await formKelas(dataKelas(), barisSah("kelas lain")), admin),
+      panggilKelas(
+        await formKelas(dataKelas(), [
+          { kelas: NAMA_KELAS, nis: "9999999", nama: "Tidak Ada" },
+          { kelas: "kelas lain", nis: "2026001", nama: "Andi" },
+        ]),
+        admin,
+      ),
     ]);
-    expect(jawaban.map((jawab) => jawab.status)).toEqual([400, 400, 400]);
+    expect(jawaban.map((jawab) => jawab.status)).toEqual([400, 400, 400, 400]);
     for (const jawab of jawaban) {
       expect(jawab.badan).toMatchObject({ kesalahan: { kode: "BERKAS_TIDAK_SAH" } });
       const rincian = (jawab.badan as { kesalahan: { rincian?: unknown[] } }).kesalahan.rincian;
@@ -224,6 +231,14 @@ describe("validasi multipart pembuatan kelas", () => {
       kesalahan: {
         rincian: expect.arrayContaining([
           expect.objectContaining({ baris: 2, sebab: expect.stringContaining("tidak cocok") }),
+        ]),
+      },
+    });
+    expect(jawaban[3]!.badan).toMatchObject({
+      kesalahan: {
+        rincian: expect.arrayContaining([
+          expect.objectContaining({ baris: 2, sebab: expect.stringContaining("tidak terdaftar") }),
+          expect.objectContaining({ baris: 3, sebab: expect.stringContaining("Kelas") }),
         ]),
       },
     });

@@ -47,6 +47,12 @@ export function buatApp(deps: DependensiApp): Express {
   // maupun kueri SQL. Rinciannya masuk ke log server; pengguna menerima pesan
   // tetap. Log ditulis dalam Bahasa Inggris ringkas dan tanpa data pribadi.
   app.use((galat: unknown, _req: Request, res: Response, _berikutnya: NextFunction) => {
+    const galatBadan = petakanGalatBadan(galat);
+    if (galatBadan) {
+      if (res.headersSent) return;
+      kirimKesalahan(res, galatBadan.status, galatBadan.kode, galatBadan.pesan);
+      return;
+    }
     console.error("unhandled request error", ringkasGalat(galat));
     if (res.headersSent) return;
     kirimKesalahan(
@@ -58,6 +64,28 @@ export function buatApp(deps: DependensiApp): Express {
   });
 
   return app;
+}
+
+function petakanGalatBadan(
+  galat: unknown,
+): Readonly<{ status: 400 | 413; kode: string; pesan: string }> | undefined {
+  if (!(galat instanceof Error)) return undefined;
+  const kandidat = galat as Error & { status?: unknown; type?: unknown };
+  if (kandidat.status === 400 && kandidat.type === "entity.parse.failed") {
+    return {
+      status: 400,
+      kode: KODE.permintaanTidakSah,
+      pesan: "Badan JSON tidak sah.",
+    };
+  }
+  if (kandidat.status === 413 && kandidat.type === "entity.too.large") {
+    return {
+      status: 413,
+      kode: KODE.berkasTerlaluBesar,
+      pesan: "Badan permintaan melampaui batas 2 MB.",
+    };
+  }
+  return undefined;
 }
 
 /**

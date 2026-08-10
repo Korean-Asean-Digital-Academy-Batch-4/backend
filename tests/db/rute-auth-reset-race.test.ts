@@ -56,6 +56,8 @@ async function buatManual(sesi: string, nomor: string): Promise<JawabanUji> {
 
 async function bersihkanRace(): Promise<void> {
   const pool = poolPemilik();
+  await pool.query(`DROP TRIGGER IF EXISTS uji_a5_gagal_cabut_sesi ON sesi_masuk`);
+  await pool.query(`DROP FUNCTION IF EXISTS uji_a5_gagal_cabut_sesi()`);
   await pool.query(`DROP TRIGGER IF EXISTS uji_a5_tahan_insert_sesi ON sesi_masuk`);
   await pool.query(`DROP FUNCTION IF EXISTS uji_a5_tahan_insert_sesi()`);
   await pool.query(`DELETE FROM pembatas_laju WHERE kunci LIKE $1`, [
@@ -128,6 +130,123 @@ async function pasangPenghalangInsertSesi(): Promise<{
 }
 
 describe("serialisasi login dan reset kata sandi Administrator", () => {
+  it("merollback hash bila pencabutan sesi pada ganti mandiri gagal", async () => {
+    const admin = await masukSebagai(app, "admin");
+    const dibuat = await buatManual(admin, "04");
+    const id = String(data(dibuat).id);
+    const lama = String(data(dibuat).kata_sandi_awal);
+    const login = await Promise.all(
+      [1, 2].map(() =>
+        panggilJson(app, "/api/auth/masuk", {
+          metode: "POST",
+          badan: { nama_pengguna: "99004804", kata_sandi: lama },
+        }),
+      ),
+    );
+    const cookie = login[0]!.kepala.get("set-cookie")?.match(/edutrack_sesi=([^;]+)/)?.[1];
+    if (!cookie) throw new Error("Login fixture rollback tidak menghasilkan sesi.");
+    const baru = "baru-gagal-cabut";
+
+    await poolPemilik().query(`
+      CREATE OR REPLACE FUNCTION uji_a5_gagal_cabut_sesi() RETURNS trigger AS $$
+      BEGIN
+        RAISE EXCEPTION 'uji gagal cabut sesi';
+      END;
+      $$ LANGUAGE plpgsql;
+      CREATE TRIGGER uji_a5_gagal_cabut_sesi
+        BEFORE DELETE ON sesi_masuk
+        FOR EACH ROW EXECUTE FUNCTION uji_a5_gagal_cabut_sesi();
+    `);
+    try {
+      const jawab = await panggilJson(app, "/api/saya/kata-sandi", {
+        metode: "PATCH",
+        sesi: `edutrack_sesi=${cookie}`,
+        badan: { kata_sandi_lama: lama, kata_sandi_baru: baru },
+      });
+      expect(jawab.status).toBe(500);
+
+      const keadaan = await poolPemilik().query<{ kata_sandi_hash: string; sesi: number }>(
+        `SELECT p.kata_sandi_hash,
+                (SELECT count(*)::int FROM sesi_masuk WHERE pengguna_ref = p.id) AS sesi
+         FROM pengguna p WHERE p.id = $1`,
+        [id],
+      );
+      expect(keadaan.rows[0]!.sesi).toBe(2);
+      expect(await dasarKataSandi.verifikasi(keadaan.rows[0]!.kata_sandi_hash, lama)).toBe(true);
+      expect(await dasarKataSandi.verifikasi(keadaan.rows[0]!.kata_sandi_hash, baru)).toBe(false);
+    } finally {
+      await poolPemilik().query(`DROP TRIGGER IF EXISTS uji_a5_gagal_cabut_sesi ON sesi_masuk`);
+      await poolPemilik().query(`DROP FUNCTION IF EXISTS uji_a5_gagal_cabut_sesi()`);
+    }
+  });
+
+  it("tidak membiarkan ganti mandiri menimpa reset Administrator yang menang race", async () => {
+    const admin = await masukSebagai(app, "admin");
+    const dibuat = await buatManual(admin, "03");
+    const id = String(data(dibuat).id);
+    const lama = String(data(dibuat).kata_sandi_awal);
+    const login = await panggilJson(app, "/api/auth/masuk", {
+      metode: "POST",
+      badan: { nama_pengguna: "99004803", kata_sandi: lama },
+    });
+    const cookie = login.kepala.get("set-cookie")?.match(/edutrack_sesi=([^;]+)/)?.[1];
+    if (!cookie) throw new Error("Login fixture race tidak menghasilkan sesi.");
+
+    let tandaiVerifikasi!: () => void;
+    let lanjutkan!: () => void;
+    const verifikasiSelesai = new Promise<void>((selesai) => {
+      tandaiVerifikasi = selesai;
+    });
+    const bolehLanjut = new Promise<void>((selesai) => {
+      lanjutkan = selesai;
+    });
+    const kataSandiRace: KataSandi = {
+      ...dasarKataSandi,
+      verifikasi: async (hash, polos) => {
+        const cocok = await dasarKataSandi.verifikasi(hash, polos);
+        if (polos === lama && cocok) {
+          tandaiVerifikasi();
+          await bolehLanjut;
+        }
+        return cocok;
+      },
+    };
+    const appRace = await nyalakanAppUji({ kataSandi: kataSandiRace });
+    const baruMandiri = "baru-mandiri-race";
+    let ganti: Promise<JawabanUji> | undefined;
+    try {
+      ganti = panggilJson(appRace, "/api/saya/kata-sandi", {
+        metode: "PATCH",
+        sesi: `edutrack_sesi=${cookie}`,
+        badan: { kata_sandi_lama: lama, kata_sandi_baru: baruMandiri },
+      });
+      await verifikasiSelesai;
+
+      const reset = await panggilJson(app, `/api/pengguna/${id}/kata-sandi`, {
+        metode: "POST",
+        sesi: admin,
+      });
+      expect(reset.status).toBe(200);
+      const baruAdministrator = String(data(reset).kata_sandi_awal);
+      lanjutkan();
+
+      const jawabGanti = await ganti;
+      expect(jawabGanti.status).toBe(401);
+      expect(jawabGanti.badan).toMatchObject({ kesalahan: { kode: "KREDENSIAL_SALAH" } });
+      const keadaan = await poolPemilik().query<{ kata_sandi_hash: string }>(
+        `SELECT kata_sandi_hash FROM pengguna WHERE id = $1`,
+        [id],
+      );
+      const hash = keadaan.rows[0]!.kata_sandi_hash;
+      expect(await dasarKataSandi.verifikasi(hash, baruAdministrator)).toBe(true);
+      expect(await dasarKataSandi.verifikasi(hash, baruMandiri)).toBe(false);
+    } finally {
+      lanjutkan();
+      await ganti?.catch(() => undefined);
+      await appRace.tutup();
+    }
+  });
+
   it("menolak login hash lama yang selesai setelah reset dan mempertahankan penghitung", async () => {
     const admin = await masukSebagai(app, "admin");
     const dibuat = await buatManual(admin, "01");

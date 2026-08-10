@@ -110,7 +110,7 @@ export function rutaKelas(
       }
       if (terurai.bermasalah.length > 0 || pratinjau.data.kelasBerkas !== data.data.nama) {
         const rincian = [
-          ...terurai.bermasalah.map(({ baris, nis, sebab }) => ({ baris, nis, sebab })),
+          ...pratinjau.data.bermasalah.map(({ baris, nis, sebab }) => ({ baris, nis, sebab })),
           ...terurai.valid
             .filter((item) => item.kelas !== data.data.nama)
             .map((item) => ({
@@ -118,7 +118,21 @@ export function rutaKelas(
               nis: item.nis,
               sebab: `Nilai Kelas ${item.kelas} tidak cocok dengan kelas ${data.data.nama}.`,
             })),
-        ];
+        ].reduce<readonly Readonly<{ baris: number; nis: string; sebab: string }>[]>(
+          (semua, item) => {
+            const lama = semua.find((rincian) => rincian.baris === item.baris);
+            if (!lama) return Object.freeze([...semua, Object.freeze({ ...item })]);
+            const sebab = lama.sebab.includes(item.sebab)
+              ? lama.sebab
+              : `${lama.sebab}; ${item.sebab}`;
+            return Object.freeze(
+              semua.map((rincian) =>
+                rincian.baris === item.baris ? Object.freeze({ ...rincian, sebab }) : rincian,
+              ),
+            );
+          },
+          Object.freeze([]),
+        );
         kirimKesalahan(
           res,
           400,

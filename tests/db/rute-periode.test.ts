@@ -3,7 +3,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } 
 import { buatPeriode as simpanPeriode } from "../../src/db/administrasi/periode.js";
 import { buatBasisData } from "../../src/db/drizzle.js";
 import type { AppUji, JawabanUji } from "./bantuan-rute.js";
-import { masukSebagai, nyalakanAppUji, panggilJson } from "./bantuan-rute.js";
+import { masukSebagai, nyalakanAppUji, panggilJson, panggilJsonMentah } from "./bantuan-rute.js";
 import { poolPemilik, tutupPool } from "./bantuan.js";
 import {
   bersihkanDataAdministrasi,
@@ -63,6 +63,20 @@ async function buatPeriode(
 }
 
 describe("batas autentikasi dan validasi periode akademik", () => {
+  it("memetakan JSON rusak dan badan JSON terlalu besar sebagai kesalahan permintaan", async () => {
+    const [rusak, terlaluBesar] = await Promise.all([
+      panggilJsonMentah(app, "/api/tahun-ajaran", '{"nama":'),
+      panggilJsonMentah(app, "/api/tahun-ajaran", `{"isi":"${"a".repeat(2 * 1024 * 1024)}"}`),
+    ]);
+
+    expect(rusak.status).toBe(400);
+    expect(rusak.badan).toMatchObject({ kesalahan: { kode: "PERMINTAAN_TIDAK_SAH" } });
+    expect(terlaluBesar.status).toBe(413);
+    expect(terlaluBesar.badan).toMatchObject({
+      kesalahan: { kode: "BERKAS_TERLALU_BESAR" },
+    });
+  });
+
   it("menjawab 401 tanpa sesi dan 403 bagi Guru/Siswa pada seluruh endpoint", async () => {
     const panggilan = [
       () => panggilJson(app, "/api/tahun-ajaran"),

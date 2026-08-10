@@ -86,6 +86,12 @@ describe("uraiAkunCsv", () => {
     });
   });
 
+  it("menolak baris akun yang memuat kolom tambahan", async () => {
+    await expect(
+      berkas.uraiAkunCsv(Buffer.from("Nama,NIP\nAndi,198001011001,diabaikan"), "guru"),
+    ).resolves.toMatchObject({ berhasil: false });
+  });
+
   it.each([
     [" Nama,NIP", "guru"],
     ["Nama ,NIP", "guru"],

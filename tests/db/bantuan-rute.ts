@@ -70,6 +70,15 @@ export function panggilJson(
   });
 }
 
+export function panggilJsonMentah(
+  app: AppUji,
+  jalan: string,
+  badan: string,
+  metode: "POST" | "PATCH" | "PUT" = "POST",
+): Promise<JawabanUji> {
+  return panggil(app, jalan, { metode, jenisIsi: "application/json", badan });
+}
+
 export function panggilMultipart(app: AppUji, jalan: string, form: FormData): Promise<JawabanUji> {
   return panggil(app, jalan, { metode: "POST", badan: form });
 }

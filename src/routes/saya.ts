@@ -4,8 +4,8 @@ import { z } from "zod";
 
 import { BATAS_MASUK, JENDELA_MASUK_MS } from "../domain/pembatas-laju.js";
 import { cariPenggunaUntukMasuk, muatKonteksPengguna } from "../db/akun.js";
-import { catatKegagalan, hapusPenghitung, periksaBatas } from "../db/pembatas-laju.js";
-import { cabutSeluruhSesi } from "../db/sesi.js";
+import { catatKegagalan, periksaBatas } from "../db/pembatas-laju.js";
+import { hashToken } from "../db/sesi.js";
 import type { KataSandi } from "../ports/kata-sandi.js";
 import { KODE, PESAN_KREDENSIAL_SALAH, kirimData, kirimKesalahan } from "./amplop.js";
 import { bungkus } from "./bungkus.js";
@@ -121,18 +121,59 @@ export function rutaSaya(pool: Pool, kataSandi: KataSandi): Router {
         kirimKesalahan(res, 401, KODE.kredensialSalah, PESAN_KREDENSIAL_SALAH);
         return;
       }
-      await hapusPenghitung(pool, kunci);
 
       const hashBaru = await kataSandi.hash(badan.data.kata_sandi_baru);
-      await pool.query(`UPDATE pengguna SET kata_sandi_hash = $1 WHERE id = $2`, [
-        hashBaru,
+      const berubah = await gantiKataSandiAtomik(
+        pool,
         penuntut.penggunaRef,
-      ]);
-      await cabutSeluruhSesi(pool, penuntut.penggunaRef, penuntut.token);
+        penuntut.token,
+        kunci,
+        akun.kataSandiHash,
+        hashBaru,
+      );
+      if (!berubah) {
+        kirimKesalahan(res, 401, KODE.kredensialSalah, PESAN_KREDENSIAL_SALAH);
+        return;
+      }
 
       res.status(204).end();
     }),
   );
 
   return ruta;
+}
+
+async function gantiKataSandiAtomik(
+  pool: Pool,
+  penggunaRef: string,
+  tokenSaatIni: string,
+  kunciPembatas: string,
+  hashTerverifikasi: string,
+  hashBaru: string,
+): Promise<boolean> {
+  const klien = await pool.connect();
+  try {
+    await klien.query("BEGIN");
+    const perubahan = await klien.query(
+      `UPDATE pengguna SET kata_sandi_hash = $1
+       WHERE id = $2 AND kata_sandi_hash = $3`,
+      [hashBaru, penggunaRef, hashTerverifikasi],
+    );
+    if (perubahan.rowCount !== 1) {
+      await klien.query("ROLLBACK");
+      return false;
+    }
+    await klien.query(`DELETE FROM pembatas_laju WHERE kunci = $1`, [kunciPembatas]);
+    await klien.query(`DELETE FROM sesi_masuk WHERE pengguna_ref = $1 AND token_hash <> $2`, [
+      penggunaRef,
+      hashToken(tokenSaatIni),
+    ]);
+    await klien.query("COMMIT");
+    return true;
+  } catch (galat) {
+    await klien.query("ROLLBACK").catch(() => undefined);
+    throw galat;
+  } finally {
+    klien.release();
+  }
 }

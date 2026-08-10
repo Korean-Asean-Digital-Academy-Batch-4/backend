@@ -148,10 +148,17 @@ function tentukanMasalah(
   nisDilihat: ReadonlySet<string>,
   kelasBercampur: boolean,
 ): string | undefined {
-  if (kelasBercampur) return "Nilai Kelas tidak konsisten di dalam berkas";
-  if (nisDilihat.has(item.nis)) return "NIS ganda di dalam berkas";
-  if (!siswaAda) return "NIS tidak terdaftar sebagai akun siswa";
-  if (!siswaAda.keanggotaanRef) return undefined;
-  if (!siswaAda.kelasNama) throw new Error("Keanggotaan siswa tidak memiliki kelas.");
-  return `Sudah terdaftar pada kelas ${siswaAda.kelasNama} pada semester ini`;
+  if (siswaAda?.keanggotaanRef && !siswaAda.kelasNama) {
+    throw new Error("Keanggotaan siswa tidak memiliki kelas.");
+  }
+  const sebab = [
+    ...(kelasBercampur ? ["Nilai Kelas tidak konsisten di dalam berkas"] : []),
+    ...(nisDilihat.has(item.nis) ? ["NIS ganda di dalam berkas"] : []),
+    ...(!siswaAda
+      ? ["NIS tidak terdaftar sebagai akun siswa"]
+      : siswaAda.keanggotaanRef
+        ? [`Sudah terdaftar pada kelas ${siswaAda.kelasNama!} pada semester ini`]
+        : []),
+  ];
+  return sebab.length > 0 ? sebab.join("; ") : undefined;
 }

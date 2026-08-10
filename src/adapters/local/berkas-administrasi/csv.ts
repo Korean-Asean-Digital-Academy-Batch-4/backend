@@ -48,6 +48,7 @@ export async function uraiAkunCsv(
     const bermasalah: RincianBerkas[] = [];
     for (let indeks = 1; indeks < semua.length; indeks += 1) {
       const baris = semua[indeks]!;
+      if (baris.length !== 2) return { berhasil: false, sebab: SEBAB_BERKAS_TIDAK_SAH };
       const nama = (baris[0] ?? "").trim();
       const namaPengguna = (baris[1] ?? "").trim();
       const sebab = rincianAkun(nama, namaPengguna, kepalaPengenal);
