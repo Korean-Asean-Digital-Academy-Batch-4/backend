@@ -12,9 +12,18 @@ import type { Response } from "express";
 export const KODE = {
   kredensialSalah: "KREDENSIAL_SALAH",
   sesiTidakSah: "SESI_TIDAK_SAH",
+  kewenanganDitolak: "KEWENANGAN_DITOLAK",
   permintaanTidakSah: "PERMINTAAN_TIDAK_SAH",
   batasLajuTerlampaui: "BATAS_LAJU_TERLAMPAUI",
   tidakDitemukan: "TIDAK_DITEMUKAN",
+  berkasTidakSah: "BERKAS_TIDAK_SAH",
+  berkasTerlaluBesar: "BERKAS_TERLALU_BESAR",
+  bobotTidakSeratus: "BOBOT_TIDAK_SERATUS",
+  dataSudahAda: "DATA_SUDAH_ADA",
+  guruSudahMengampu: "GURU_SUDAH_MENGAMPU",
+  guruBelumMengampu: "GURU_BELUM_MENGAMPU",
+  komponenSudahDipakai: "KOMPONEN_SUDAH_DIPAKAI",
+  jenjangTidakCocok: "JENJANG_TIDAK_COCOK",
   kesalahanServer: "KESALAHAN_SERVER",
 } as const;
 
@@ -35,7 +44,7 @@ export function kirimKesalahan(
   status: number,
   kode: string,
   pesan: string,
-  rincian?: unknown[],
+  rincian?: readonly unknown[],
 ): void {
   res.status(status).json({
     kesalahan: { kode, pesan, ...(rincian ? { rincian } : {}) },

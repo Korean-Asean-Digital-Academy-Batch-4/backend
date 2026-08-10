@@ -1,11 +1,9 @@
-import type { AddressInfo } from "node:net";
-import type { Server } from "node:http";
-
 import { afterAll, beforeAll, beforeEach, describe, expect, inject, it } from "vitest";
 
-import { buatApp } from "../../src/app.js";
 import { kataSandiArgon2id } from "../../src/adapters/local/kata-sandi.js";
 import { poolPemilik, tutupPool } from "./bantuan.js";
+import type { AppUji } from "./bantuan-rute.js";
+import { nyalakanAppUji } from "./bantuan-rute.js";
 
 // API.md sec 3 dan sec 10, ARCHITECTURE.md sec 9.1 dan Pasal 7.
 // AC-33: tidak ada endpoint lupa kata sandi dalam bentuk apa pun.
@@ -13,8 +11,7 @@ import { poolPemilik, tutupPool } from "./bantuan.js";
 const b = inject("benih");
 const KATA_SANDI = "kata-sandi-uji";
 
-let server: Server;
-let dasar: string;
+let app: AppUji;
 let hashBenih: string;
 
 async function panggil(
@@ -29,7 +26,7 @@ async function panggil(
   badan: any;
   setCookie: string | null;
 }> {
-  const jawab = await fetch(`${dasar}${jalan}`, {
+  const jawab = await fetch(`${app.asal}${jalan}`, {
     method: pilihan.metode ?? "GET",
     headers: {
       "content-type": "application/json",
@@ -66,17 +63,20 @@ function ambilToken(setCookie: string | null): string {
 beforeAll(async () => {
   hashBenih = await kataSandiArgon2id().hash(KATA_SANDI);
 
-  const app = buatApp({ pool: poolPemilik(), kataSandi: kataSandiArgon2id() });
-  server = app.listen(0);
-  await new Promise((selesai) => server.once("listening", selesai));
-  dasar = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+  app = await nyalakanAppUji();
 });
 
 afterAll(async () => {
-  await new Promise((selesai) => server.close(selesai));
-  // Memulihkan benih: berkas tes lain menyandarkan diri pada nilai 'x'.
-  await poolPemilik().query(`UPDATE pengguna SET kata_sandi_hash = 'x'`);
-  await tutupPool();
+  try {
+    await app.tutup();
+  } finally {
+    try {
+      // Memulihkan benih: berkas tes lain menyandarkan diri pada nilai 'x'.
+      await poolPemilik().query(`UPDATE pengguna SET kata_sandi_hash = 'x'`);
+    } finally {
+      await tutupPool();
+    }
+  }
 });
 
 beforeEach(async () => {

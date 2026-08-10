@@ -6,6 +6,9 @@
  * sehingga penggantian algoritma kelak tidak menyentuh satu pun berkas rute.
  */
 export interface KataSandi {
+  /** Menghasilkan kata sandi awal acak yang hanya diserahkan sekali. */
+  buatAwal(): string;
+
   /** Menghasilkan hash Argon2id beserta garamnya. */
   hash(polos: string): Promise<string>;
 
