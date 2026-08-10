@@ -1,5 +1,6 @@
 import cookieParser from "cookie-parser";
 import express, { type Express, type NextFunction, type Request, type Response } from "express";
+import { DatabaseError } from "pg";
 
 import type { DependensiApp } from "./dependensi-app.js";
 import { KODE, kirimKesalahan } from "./routes/amplop.js";
@@ -65,9 +66,23 @@ function ringkasGalat(galat: unknown): Record<string, unknown> {
     return { sumber: "postgres", code: pg.code, constraint: pg.constraint, table: pg.table };
   }
   if (galat instanceof Error) {
-    return { sumber: "aplikasi", name: galat.name, stack: galat.stack };
+    return { sumber: "aplikasi", name: namaGalatAman(galat.name) };
   }
   return { sumber: "tidak dikenal" };
+}
+
+const NAMA_GALAT_AMAN = Object.freeze([
+  "Error",
+  "TypeError",
+  "RangeError",
+  "ReferenceError",
+  "SyntaxError",
+  "URIError",
+  "AggregateError",
+]);
+
+function namaGalatAman(nama: string): string {
+  return NAMA_GALAT_AMAN.includes(nama) ? nama : "Error";
 }
 
 /** Drizzle membungkus galat `pg` di properti `cause`; jangan log query/params pembungkusnya. */
@@ -78,12 +93,11 @@ function temukanGalatBerkode(
   const sudahDilihat = new Set<unknown>();
   while (typeof saatIni === "object" && saatIni !== null && !sudahDilihat.has(saatIni)) {
     sudahDilihat.add(saatIni);
-    if ("code" in saatIni) {
-      const berkode = saatIni as { code?: unknown; constraint?: unknown; table?: unknown };
+    if (saatIni instanceof DatabaseError) {
       return {
-        code: typeof berkode.code === "string" ? berkode.code : undefined,
-        constraint: typeof berkode.constraint === "string" ? berkode.constraint : undefined,
-        table: typeof berkode.table === "string" ? berkode.table : undefined,
+        code: saatIni.code,
+        constraint: saatIni.constraint,
+        table: saatIni.table,
       };
     }
     saatIni = "cause" in saatIni ? (saatIni as { cause?: unknown }).cause : undefined;

@@ -78,7 +78,7 @@ describe("bacaBerkasMultipart", () => {
     ]);
 
     expect(jawab.status).toBe(400);
-    expect(jawab.badan).toMatchObject({ kesalahan: { kode: "BERKAS_TIDAK_SAH" } });
+    expect(jawab.badan).toMatchObject({ kesalahan: { kode: "PERMINTAAN_TIDAK_SAH" } });
   });
 
   it("menolak dua berkas", async () => {
@@ -88,7 +88,28 @@ describe("bacaBerkasMultipart", () => {
     ]);
 
     expect(jawab.status).toBe(400);
-    expect(jawab.badan).toMatchObject({ kesalahan: { kode: "BERKAS_TIDAK_SAH" } });
+    expect(jawab.badan).toMatchObject({ kesalahan: { kode: "PERMINTAAN_TIDAK_SAH" } });
+  });
+
+  it("menolak nama bidang berkas yang salah sebagai bentuk permintaan", async () => {
+    const jawab = await ujiPembacaMultipart(Buffer.alloc(0), [
+      { jenis: "bidang", nama: "peran", nilai: "guru" },
+      { jenis: "berkas", nama: "lampiran", nilai: Buffer.from("isi") },
+    ]);
+
+    expect(jawab.status).toBe(400);
+    expect(jawab.badan).toMatchObject({ kesalahan: { kode: "PERMINTAAN_TIDAK_SAH" } });
+  });
+
+  it("menolak bidang duplikat sebagai bentuk permintaan", async () => {
+    const jawab = await ujiPembacaMultipart(Buffer.alloc(0), [
+      { jenis: "bidang", nama: "peran", nilai: "guru" },
+      { jenis: "bidang", nama: "peran", nilai: "siswa" },
+      { jenis: "berkas", nilai: Buffer.from("isi") },
+    ]);
+
+    expect(jawab.status).toBe(400);
+    expect(jawab.badan).toMatchObject({ kesalahan: { kode: "PERMINTAAN_TIDAK_SAH" } });
   });
 
   it("menolak aliran segera setelah batas 2 MiB", async () => {
@@ -123,7 +144,7 @@ describe("bacaBerkasMultipart", () => {
     await expect(bacaBerkasMultipart(req)).resolves.toMatchObject({
       berhasil: false,
       status: 400,
-      kode: "BERKAS_TIDAK_SAH",
+      kode: "PERMINTAAN_TIDAK_SAH",
     });
   });
 

@@ -7,7 +7,7 @@ import { BATAS_UNGGAH_BYTE } from "../ports/berkas-administrasi.js";
 
 export { BATAS_UNGGAH_BYTE } from "../ports/berkas-administrasi.js";
 
-type KodeMultipart = "PERMINTAAN_TIDAK_SAH" | "BERKAS_TIDAK_SAH" | "BERKAS_TERLALU_BESAR";
+type KodeMultipart = "PERMINTAAN_TIDAK_SAH" | "BERKAS_TERLALU_BESAR";
 
 export type HasilBacaMultipart =
   | Readonly<{
@@ -22,12 +22,6 @@ export type HasilBacaMultipart =
       pesan: string;
     }>;
 
-const TIDAK_SAH: HasilBacaMultipart = {
-  berhasil: false,
-  status: 400,
-  kode: "BERKAS_TIDAK_SAH",
-  pesan: "Berkas multipart tidak sah.",
-};
 const BENTUK_PERMINTAAN_TIDAK_SAH: HasilBacaMultipart = {
   berhasil: false,
   status: 400,
@@ -44,7 +38,7 @@ const TERLALU_BESAR: HasilBacaMultipart = {
 export function bacaBerkasMultipart(req: Request): Promise<HasilBacaMultipart> {
   if (requestSudahBerakhir(req)) {
     kurasRequestDenganAman(req);
-    return Promise.resolve(TIDAK_SAH);
+    return Promise.resolve(BENTUK_PERMINTAAN_TIDAK_SAH);
   }
 
   let pengurai: PenguraiBusboy;
@@ -61,7 +55,7 @@ export function bacaBerkasMultipart(req: Request): Promise<HasilBacaMultipart> {
     });
   } catch {
     kurasRequestDenganAman(req);
-    return Promise.resolve(TIDAK_SAH);
+    return Promise.resolve(BENTUK_PERMINTAAN_TIDAK_SAH);
   }
 
   return new Promise((selesai) => {
@@ -106,18 +100,18 @@ export function bacaBerkasMultipart(req: Request): Promise<HasilBacaMultipart> {
       selesai(hasil);
     };
 
-    const saatBatal = (): void => tuntaskan(TIDAK_SAH);
-    const saatGalat = (): void => tuntaskan(TIDAK_SAH);
+    const saatBatal = (): void => tuntaskan(BENTUK_PERMINTAAN_TIDAK_SAH);
+    const saatGalat = (): void => tuntaskan(BENTUK_PERMINTAAN_TIDAK_SAH);
 
     req.once("aborted", saatBatal);
     req.once("error", saatGalat);
     pengurai.once("error", saatGalat);
-    pengurai.once("filesLimit", () => tuntaskan(TIDAK_SAH));
+    pengurai.once("filesLimit", () => tuntaskan(BENTUK_PERMINTAAN_TIDAK_SAH));
     pengurai.once("fieldsLimit", () => tuntaskan(BENTUK_PERMINTAAN_TIDAK_SAH));
     pengurai.once("partsLimit", () => tuntaskan(BENTUK_PERMINTAAN_TIDAK_SAH));
     pengurai.on("field", (nama, nilai, info) => {
       if (info.nameTruncated || info.valueTruncated || bidang.some(([ada]) => ada === nama)) {
-        tuntaskan(TIDAK_SAH);
+        tuntaskan(BENTUK_PERMINTAAN_TIDAK_SAH);
         return;
       }
       bidang.push([nama, nilai]);
@@ -127,7 +121,7 @@ export function bacaBerkasMultipart(req: Request): Promise<HasilBacaMultipart> {
       aliranBerkas = aliran;
       if (nama !== "berkas" || jumlahBerkas !== 1) {
         aliran.resume();
-        tuntaskan(TIDAK_SAH);
+        tuntaskan(BENTUK_PERMINTAAN_TIDAK_SAH);
         return;
       }
       aliran.once("limit", () => {
@@ -143,7 +137,7 @@ export function bacaBerkasMultipart(req: Request): Promise<HasilBacaMultipart> {
       if (terlaluBesar) {
         tuntaskan(TERLALU_BESAR);
       } else if (jumlahBerkas !== 1) {
-        tuntaskan(TIDAK_SAH);
+        tuntaskan(BENTUK_PERMINTAAN_TIDAK_SAH);
       } else {
         tuntaskan({
           berhasil: true,
@@ -154,7 +148,7 @@ export function bacaBerkasMultipart(req: Request): Promise<HasilBacaMultipart> {
     });
 
     if (requestSudahBerakhir(req)) {
-      tuntaskan(TIDAK_SAH);
+      tuntaskan(BENTUK_PERMINTAAN_TIDAK_SAH);
       return;
     }
     req.pipe(pengurai);

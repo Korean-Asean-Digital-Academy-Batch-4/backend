@@ -127,9 +127,7 @@ export function rutaPengguna(
           multipart.status,
           multipart.kode === "BERKAS_TERLALU_BESAR"
             ? KODE.berkasTerlaluBesar
-            : multipart.kode === "PERMINTAAN_TIDAK_SAH"
-              ? KODE.permintaanTidakSah
-              : KODE.berkasTidakSah,
+            : KODE.permintaanTidakSah,
           multipart.pesan,
         );
         return;

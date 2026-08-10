@@ -254,6 +254,41 @@ describe("batas autentikasi dan validasi rute pengguna", () => {
     }
   });
 
+  it("memetakan seluruh bentuk multipart rusak sebagai permintaan tidak sah", async () => {
+    const admin = await masukSebagai(app, "admin");
+    const csv = csvAkun("guru", [{ nama: "Uji", namaPengguna: "990040008" }]);
+    const duplikatBidang = new FormData();
+    duplikatBidang.append("peran", "guru");
+    duplikatBidang.append("peran", "siswa");
+    duplikatBidang.set("berkas", new Blob([csv], { type: "text/csv" }), "akun.csv");
+    const namaBerkasSalah = new FormData();
+    namaBerkasSalah.set("peran", "guru");
+    namaBerkasSalah.set("lampiran", new Blob([csv], { type: "text/csv" }), "akun.csv");
+    const tanpaBerkas = new FormData();
+    tanpaBerkas.set("peran", "guru");
+    const duaBerkas = new FormData();
+    duaBerkas.set("peran", "guru");
+    duaBerkas.append("berkas", new Blob([csv], { type: "text/csv" }), "satu.csv");
+    duaBerkas.append("berkas", new Blob([csv], { type: "text/csv" }), "dua.csv");
+
+    const jawaban = await Promise.all(
+      [duplikatBidang, namaBerkasSalah, tanpaBerkas, duaBerkas].map((form) =>
+        panggilMultipart(app, "/api/pengguna/unggah", form, admin),
+      ),
+    );
+
+    expect(jawaban.map((jawab) => jawab.status)).toEqual([400, 400, 400, 400]);
+    expect(
+      jawaban.map((jawab) => (jawab.badan as { kesalahan: { kode: string } }).kesalahan.kode),
+    ).toEqual([
+      "PERMINTAAN_TIDAK_SAH",
+      "PERMINTAAN_TIDAK_SAH",
+      "PERMINTAAN_TIDAK_SAH",
+      "PERMINTAAN_TIDAK_SAH",
+    ]);
+    expect(await hitungTask4()).toBe(0);
+  });
+
   it("menolak nama pengguna manual Guru dan Siswa yang bukan angka", async () => {
     const admin = await masukSebagai(app, "admin");
     const jawaban = await Promise.all(
@@ -433,6 +468,10 @@ describe("reset kata sandi", () => {
       expect(log).not.toContain(id);
       expect(log).not.toContain(sebelum.rows[0]!.kata_sandi_hash);
       expect(log).not.toContain("params:");
+      expect(pencatat).toHaveBeenCalledWith(
+        "unhandled request error",
+        expect.objectContaining({ sumber: "postgres", code: "P0001" }),
+      );
     } finally {
       pencatat.mockRestore();
       await lepas();
@@ -499,8 +538,14 @@ describe("unggah akun atomik", () => {
       sekarang: () => new Date(SEKARANG),
       berkasAdministrasi: {
         ...dasar,
-        buatCsvKredensial: async () => {
-          throw new Error("pembentukan kredensial gagal");
+        buatCsvKredensial: async (kredensial) => {
+          const pertama = kredensial[0]!;
+          const galat = new Error(
+            `gagal untuk ${pertama.nama}/${pertama.namaPengguna}/${pertama.kataSandiAwal}`,
+          ) as Error & { code: string };
+          galat.name = `Adapter-${pertama.namaPengguna}`;
+          galat.code = pertama.namaPengguna;
+          throw galat;
         },
       },
     });
@@ -514,7 +559,14 @@ describe("unggah akun atomik", () => {
       );
       expect(jawab.status).toBe(500);
       expect(await hitungTask4()).toBe(0);
-      expect(JSON.stringify(pencatat.mock.calls)).not.toContain("990040409");
+      const log = JSON.stringify(pencatat.mock.calls);
+      expect(log).not.toContain("uji-a5-task4-CSV Gagal");
+      expect(log).not.toContain("990040409");
+      expect(log).not.toContain("AwalUji0001");
+      expect(pencatat).toHaveBeenCalledWith("unhandled request error", {
+        sumber: "aplikasi",
+        name: "Error",
+      });
     } finally {
       pencatat.mockRestore();
       await appGagal.tutup();
