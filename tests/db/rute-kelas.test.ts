@@ -210,7 +210,23 @@ describe("validasi multipart pembuatan kelas", () => {
     expect(jawaban.map((jawab) => jawab.status)).toEqual([400, 400, 400]);
     for (const jawab of jawaban) {
       expect(jawab.badan).toMatchObject({ kesalahan: { kode: "BERKAS_TIDAK_SAH" } });
+      const rincian = (jawab.badan as { kesalahan: { rincian?: unknown[] } }).kesalahan.rincian;
+      expect(rincian?.length).toBeGreaterThan(0);
     }
+    expect(jawaban[1]!.badan).toMatchObject({
+      kesalahan: {
+        rincian: expect.arrayContaining([
+          expect.objectContaining({ baris: 3, sebab: expect.stringContaining("Kelas") }),
+        ]),
+      },
+    });
+    expect(jawaban[2]!.badan).toMatchObject({
+      kesalahan: {
+        rincian: expect.arrayContaining([
+          expect.objectContaining({ baris: 2, sebab: expect.stringContaining("tidak cocok") }),
+        ]),
+      },
+    });
   });
 
   it("menolak seluruh permintaan bila satu siswa tidak cocok atau NIS ganda", async () => {

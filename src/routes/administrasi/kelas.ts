@@ -109,12 +109,22 @@ export function rutaKelas(
         throw new Error("Parser berhasil dipetakan tetapi hasilnya tidak dapat dibaca.");
       }
       if (terurai.bermasalah.length > 0 || pratinjau.data.kelasBerkas !== data.data.nama) {
+        const rincian = [
+          ...terurai.bermasalah.map(({ baris, nis, sebab }) => ({ baris, nis, sebab })),
+          ...terurai.valid
+            .filter((item) => item.kelas !== data.data.nama)
+            .map((item) => ({
+              baris: item.baris,
+              nis: item.nis,
+              sebab: `Nilai Kelas ${item.kelas} tidak cocok dengan kelas ${data.data.nama}.`,
+            })),
+        ];
         kirimKesalahan(
           res,
           400,
           KODE.berkasTidakSah,
           "Seluruh siswa dan nilai Kelas di dalam berkas wajib sah dan cocok dengan data kelas.",
-          terurai.bermasalah.map(({ baris, nis, sebab }) => ({ baris, nis, sebab })),
+          rincian,
         );
         return;
       }
