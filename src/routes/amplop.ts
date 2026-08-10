@@ -24,6 +24,8 @@ export const KODE = {
   guruBelumMengampu: "GURU_BELUM_MENGAMPU",
   komponenSudahDipakai: "KOMPONEN_SUDAH_DIPAKAI",
   jenjangTidakCocok: "JENJANG_TIDAK_COCOK",
+  sesiSudahAda: "SESI_SUDAH_ADA",
+  raporTerkunci: "RAPOR_TERKUNCI",
   kesalahanServer: "KESALAHAN_SERVER",
 } as const;
 
