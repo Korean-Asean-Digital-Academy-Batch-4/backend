@@ -395,14 +395,30 @@ describe("pembuatan, daftar, dan detail kelas", () => {
     const mata = vi.spyOn(poolPemilik(), "query");
     try {
       expect((await panggilJson(app, "/api/kelas", { sesi: admin })).status).toBe(200);
-      const kueriDaftar = mata.mock.calls.length;
+      const kueriDaftarKecil = mata.mock.calls.length;
       mata.mockClear();
       expect((await panggilJson(app, `/api/kelas/${id}`, { sesi: admin })).status).toBe(200);
-      const kueriDetail = mata.mock.calls.length;
-      expect(kueriDaftar).toBeLessThanOrEqual(4);
-      expect(kueriDetail).toBeLessThanOrEqual(7);
-    } finally {
+      const kueriDetailKecil = mata.mock.calls.length;
+
       mata.mockRestore();
+      await tambahAnakKelas(id);
+      const mataBesar = vi.spyOn(poolPemilik(), "query");
+      try {
+        expect((await panggilJson(app, "/api/kelas", { sesi: admin })).status).toBe(200);
+        const kueriDaftarBesar = mataBesar.mock.calls.length;
+        mataBesar.mockClear();
+        expect((await panggilJson(app, `/api/kelas/${id}`, { sesi: admin })).status).toBe(200);
+        const kueriDetailBesar = mataBesar.mock.calls.length;
+
+        expect(kueriDaftarKecil).toBeLessThanOrEqual(4);
+        expect(kueriDetailKecil).toBeLessThanOrEqual(7);
+        expect(kueriDaftarBesar).toBe(kueriDaftarKecil);
+        expect(kueriDetailBesar).toBe(kueriDetailKecil);
+      } finally {
+        mataBesar.mockRestore();
+      }
+    } finally {
+      if (vi.isMockFunction(poolPemilik().query)) mata.mockRestore();
     }
   });
 });
@@ -522,4 +538,42 @@ async function buatAkunKonteks(
   const token = masuk.kepala.get("set-cookie")?.match(/edutrack_sesi=([^;]+)/)?.[1];
   if (!token) throw new Error("Sesi akun konteks tidak terbentuk.");
   return { id, sesi: `edutrack_sesi=${token}` };
+}
+
+async function tambahAnakKelas(kelasRef: string): Promise<void> {
+  const hasil = await poolPemilik().query<{ siswa_id: string; guru_id: string; mapel_id: string }>(
+    `WITH siswa_baru AS (
+       INSERT INTO pengguna (nama_pengguna, nama, peran, kata_sandi_hash)
+       VALUES ('uji-a5-query-siswa', 'Siswa Query Tambahan', 'siswa', 'hash-uji')
+       RETURNING id
+     ), profil_siswa AS (
+       INSERT INTO siswa (pengguna_ref) SELECT id FROM siswa_baru RETURNING pengguna_ref
+     ), guru_baru AS (
+       INSERT INTO pengguna (nama_pengguna, nama, peran, kata_sandi_hash)
+       VALUES ('uji-a5-query-guru', 'Guru Query Tambahan', 'guru', 'hash-uji')
+       RETURNING id
+     ), profil_guru AS (
+       INSERT INTO guru (pengguna_ref) SELECT id FROM guru_baru RETURNING pengguna_ref
+     ), mapel_baru AS (
+       INSERT INTO mapel (kode, nama, tingkat, guru_ref)
+       SELECT 'uji-a5-query-mapel', 'Mapel Query Tambahan', 'X', pengguna_ref FROM profil_guru
+       RETURNING id
+     )
+     SELECT profil_siswa.pengguna_ref AS siswa_id,
+            profil_guru.pengguna_ref AS guru_id,
+            mapel_baru.id AS mapel_id
+     FROM profil_siswa CROSS JOIN profil_guru CROSS JOIN mapel_baru`,
+  );
+  const anak = hasil.rows[0];
+  if (!anak) throw new Error("Fixture anak kelas untuk hitungan kueri tidak terbentuk.");
+  await poolPemilik().query(
+    `INSERT INTO kelas_siswa (kelas_ref, siswa_ref, periode_ref)
+     VALUES ($1, $2, $3)`,
+    [kelasRef, anak.siswa_id, BENIH.periodeGenap],
+  );
+  await poolPemilik().query(
+    `INSERT INTO penugasan (guru_ref, mapel_ref, kelas_ref, tingkat)
+     VALUES ($1, $2, $3, 'X')`,
+    [anak.guru_id, anak.mapel_id, kelasRef],
+  );
 }

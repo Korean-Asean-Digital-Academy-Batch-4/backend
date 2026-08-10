@@ -135,6 +135,31 @@ export async function buatKelasAtomik(
         .orderBy(asc(siswa.penggunaRef))
         .for("update");
 
+      // Permintaan identik dapat sama-sama melewati preflight di atas lalu
+      // menunggu kunci siswa yang sama. Setelah memperoleh kunci, baca ulang
+      // identitas kelas agar pemenang race dipetakan sebagai duplikat kelas,
+      // bukan sebagai konflik I-08 milik anak yang baru saja dibuatnya.
+      const [kelasMenangRace] = await tx
+        .select({ nama: kelas.nama, waliKelasRef: kelas.waliKelasRef })
+        .from(kelas)
+        .where(
+          and(
+            eq(kelas.periodeRef, input.periodeRef),
+            or(eq(kelas.nama, input.nama), eq(kelas.waliKelasRef, input.waliKelasRef)),
+          ),
+        )
+        .limit(1);
+      if (kelasMenangRace) {
+        return {
+          berhasil: false,
+          jenis: "data_sudah_ada",
+          pesan:
+            kelasMenangRace.nama === input.nama
+              ? "Nama kelas sudah dipakai pada periode sasaran."
+              : "Wali kelas sudah ditetapkan pada kelas lain di periode sasaran.",
+        };
+      }
+
       const konflik = await rincianKonflikKeanggotaan(
         tx,
         input.periodeRef,

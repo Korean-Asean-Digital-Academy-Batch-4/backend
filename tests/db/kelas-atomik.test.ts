@@ -432,4 +432,61 @@ describe("POST /api/kelas atomik", () => {
       raporDraft: 2,
     });
   });
+
+  it("memprioritaskan duplikat kelas pada dua request identik yang benar-benar konkuren", async () => {
+    const admin = await masukSebagai(app, "admin");
+    const pengunci = await poolPemilik().connect();
+    let transaksiAktif = false;
+    try {
+      await pengunci.query("BEGIN");
+      transaksiAktif = true;
+      await pengunci.query(
+        `SELECT pengguna_ref FROM siswa
+         WHERE pengguna_ref = ANY($1::uuid[])
+         ORDER BY pengguna_ref FOR UPDATE`,
+        [[BENIH.siswaAndi, BENIH.siswaBudi]],
+      );
+
+      const permintaan = [
+        panggilBuatKelas(admin, dataKelas(NAMA_KELAS_BERHASIL), barisSiswa(NAMA_KELAS_BERHASIL)),
+        panggilBuatKelas(
+          admin,
+          dataKelas(NAMA_KELAS_BERHASIL),
+          barisSiswaTerbalik(NAMA_KELAS_BERHASIL),
+        ),
+      ] as const;
+      await tungguKueriSiswaTerblokir(2);
+      await pengunci.query("COMMIT");
+      transaksiAktif = false;
+
+      const jawaban = await Promise.all(permintaan);
+      expect(jawaban.map((jawab) => jawab.status).sort((a, b) => a - b)).toEqual([201, 409]);
+      expect(jawaban.some((jawab) => jawab.status === 500)).toBe(false);
+      expect(jawaban.find((jawab) => jawab.status === 409)?.badan).toMatchObject({
+        kesalahan: { kode: "DATA_SUDAH_ADA" },
+      });
+      await expect(hitungGrafKelas(NAMA_KELAS_BERHASIL)).resolves.toMatchObject({
+        kelas: 1,
+        kelasSiswa: 2,
+      });
+    } finally {
+      if (transaksiAktif) await pengunci.query("ROLLBACK").catch(() => undefined);
+      pengunci.release();
+    }
+  });
 });
+
+async function tungguKueriSiswaTerblokir(jumlah: number): Promise<void> {
+  for (let percobaan = 0; percobaan < 200; percobaan += 1) {
+    const hasil = await poolPemilik().query<{ jumlah: number }>(
+      `SELECT count(*)::int AS jumlah FROM pg_stat_activity
+       WHERE pid <> pg_backend_pid()
+         AND wait_event_type = 'Lock'
+         AND query ILIKE '%from "siswa"%'
+         AND query ILIKE '%for update%'`,
+    );
+    if ((hasil.rows[0]?.jumlah ?? 0) >= jumlah) return;
+    await new Promise((selesai) => setTimeout(selesai, 10));
+  }
+  throw new Error(`Permintaan kelas tidak mencapai ${jumlah} barrier kunci siswa.`);
+}
