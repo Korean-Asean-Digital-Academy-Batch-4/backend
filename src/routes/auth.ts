@@ -4,9 +4,10 @@ import { z } from "zod";
 
 import { BATAS_MASUK, BATAS_MASUK_IP, JENDELA_MASUK_MS } from "../domain/pembatas-laju.js";
 import { cariPenggunaUntukMasuk } from "../db/akun.js";
+import type { BasisData } from "../db/drizzle.js";
 import { catatKegagalan, hapusPenghitung, periksaBatas } from "../db/pembatas-laju.js";
 import { UMUR_SESI_MS } from "../domain/sesi.js";
-import { buatSesi, cabutSesi } from "../db/sesi.js";
+import { buatSesiJikaHashTetap, cabutSesi } from "../db/sesi.js";
 import type { KataSandi } from "../ports/kata-sandi.js";
 import { KODE, PESAN_KREDENSIAL_SALAH, kirimData, kirimKesalahan } from "./amplop.js";
 import { alamatKlien } from "./alamat-ip.js";
@@ -34,7 +35,7 @@ const masukSkema = z
   .object({ nama_pengguna: z.string().min(1).max(32), kata_sandi: kataSandiSkema })
   .strict();
 
-export function rutaAuth(pool: Pool, kataSandi: KataSandi): Router {
+export function rutaAuth(pool: Pool, db: BasisData, kataSandi: KataSandi): Router {
   const ruta = Router();
 
   ruta.post(
@@ -88,12 +89,18 @@ export function rutaAuth(pool: Pool, kataSandi: KataSandi): Router {
         return;
       }
 
-      // Hanya penghitung akun yang dibersihkan. Penghitung IP dibiarkan: satu
-      // keberhasilan tidak membuktikan penyemprotan dari alamat itu sudah
-      // berhenti, dan membersihkannya akan menjadikan lapis kedua dapat
-      // direset penyerang cukup dengan sesekali masuk memakai akun miliknya.
+      const sesi = await buatSesiJikaHashTetap(db, akun.id, akun.kataSandiHash, sekarang);
+      if (!sesi) {
+        await catatKegagalan(pool, kunci, sekarang, JENDELA_MASUK_MS);
+        await catatKegagalan(pool, kunciIp, sekarang, JENDELA_MASUK_MS);
+        kirimKesalahan(res, 401, KODE.kredensialSalah, PESAN_KREDENSIAL_SALAH);
+        return;
+      }
+
+      // Hanya penghitung akun yang dibersihkan setelah sesi benar-benar terbentuk.
+      // Penghitung IP dibiarkan agar satu keberhasilan tidak mereset perlindungan
+      // terhadap password spraying dari alamat yang sama.
       await hapusPenghitung(pool, kunci);
-      const sesi = await buatSesi(pool, akun.id, sekarang);
       pasangCookieSesi(res, sesi.token);
 
       kirimData(res, 200, await bentukKonteks(pool, akun.id, akun.nama, akun.peran));

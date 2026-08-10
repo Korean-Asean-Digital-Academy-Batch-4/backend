@@ -4,6 +4,7 @@ import express, { type Express, type NextFunction, type Request, type Response }
 import type { DependensiApp } from "./dependensi-app.js";
 import { KODE, kirimKesalahan } from "./routes/amplop.js";
 import { rutaTemplat } from "./routes/administrasi/templat.js";
+import { rutaPengguna } from "./routes/administrasi/pengguna.js";
 import { rutaAuth } from "./routes/auth.js";
 import { rutaHealthz } from "./routes/healthz.js";
 import { rutaSaya } from "./routes/saya.js";
@@ -14,13 +15,16 @@ export function buatApp(deps: DependensiApp): Express {
   const app = express();
   app.disable("x-powered-by");
   // Batas 2 MB mengikuti batas unggahan pada ARCHITECTURE.md Pasal 7.
-  app.use(express.json({ limit: "2mb" }));
+  // Primitive JSON dibiarkan mencapai Zod pada setiap rute, agar `null`, string,
+  // dan larik ditolak sebagai 400 kontrak HTTP alih-alih SyntaxError parser 500.
+  app.use(express.json({ limit: "2mb", strict: false }));
   app.use(cookieParser());
 
   app.use(rutaHealthz(deps.pool));
-  app.use(rutaAuth(deps.pool, deps.kataSandi));
+  app.use(rutaAuth(deps.pool, deps.db, deps.kataSandi));
   app.use(rutaSaya(deps.pool, deps.kataSandi));
   app.use(rutaTemplat(deps));
+  app.use(rutaPengguna(deps));
 
   // Alamat yang tidak dikenal tetap menjawab dengan amplop API.md sec 2.2,
   // bukan halaman HTML bawaan Express. Frontend hanya mengurai satu bentuk.
@@ -56,12 +60,33 @@ export function buatApp(deps: DependensiApp): Express {
  * dan nama constraint: cukup untuk menelusuri, tanpa satu pun nilai data.
  */
 function ringkasGalat(galat: unknown): Record<string, unknown> {
-  if (typeof galat === "object" && galat !== null && "code" in galat) {
-    const pg = galat as { code?: string; constraint?: string; table?: string };
+  const pg = temukanGalatBerkode(galat);
+  if (pg) {
     return { sumber: "postgres", code: pg.code, constraint: pg.constraint, table: pg.table };
   }
   if (galat instanceof Error) {
     return { sumber: "aplikasi", name: galat.name, stack: galat.stack };
   }
   return { sumber: "tidak dikenal" };
+}
+
+/** Drizzle membungkus galat `pg` di properti `cause`; jangan log query/params pembungkusnya. */
+function temukanGalatBerkode(
+  galat: unknown,
+): Readonly<{ code?: string; constraint?: string; table?: string }> | undefined {
+  let saatIni = galat;
+  const sudahDilihat = new Set<unknown>();
+  while (typeof saatIni === "object" && saatIni !== null && !sudahDilihat.has(saatIni)) {
+    sudahDilihat.add(saatIni);
+    if ("code" in saatIni) {
+      const berkode = saatIni as { code?: unknown; constraint?: unknown; table?: unknown };
+      return {
+        code: typeof berkode.code === "string" ? berkode.code : undefined,
+        constraint: typeof berkode.constraint === "string" ? berkode.constraint : undefined,
+        table: typeof berkode.table === "string" ? berkode.table : undefined,
+      };
+    }
+    saatIni = "cause" in saatIni ? (saatIni as { cause?: unknown }).cause : undefined;
+  }
+  return undefined;
 }

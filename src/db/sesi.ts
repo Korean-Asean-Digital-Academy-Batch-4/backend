@@ -1,8 +1,12 @@
 import { createHash, randomBytes } from "node:crypto";
 
+import { eq, lte } from "drizzle-orm";
 import type { Pool } from "pg";
 
 import { hitungKedaluwarsa } from "../domain/sesi.js";
+import type { BasisData } from "./drizzle.js";
+import { pengguna } from "./skema/identitas.js";
+import { sesiMasuk } from "./skema/penopang.js";
 
 /**
  * Sesi masuk sebagai baris basis data yang dapat dicabut — CK-A-04.
@@ -53,6 +57,42 @@ export async function buatSesi(pool: Pool, penggunaRef: string, sekarang: Date):
   );
 
   return { token, kedaluwarsaPada };
+}
+
+/**
+ * Membuat sesi hanya bila hash yang baru diverifikasi masih berlaku.
+ *
+ * Argon2 selesai sebelum fungsi ini dipanggil. Lock baris pengguna kemudian
+ * menyerialkan pembuatan sesi dengan reset Administrator: bila login menang,
+ * reset berikutnya menghapus sesinya; bila reset menang, hash tidak lagi sama
+ * dan kredensial lama tidak memperoleh sesi baru.
+ */
+export async function buatSesiJikaHashTetap(
+  db: BasisData,
+  penggunaRef: string,
+  hashTerverifikasi: string,
+  sekarang: Date,
+): Promise<SesiBaru | null> {
+  const token = randomBytes(PANJANG_TOKEN_BYTE).toString("base64url");
+  const kedaluwarsaPada = hitungKedaluwarsa(sekarang);
+
+  return db.transaction(async (tx) => {
+    const [akun] = await tx
+      .select({ aktif: pengguna.aktif, kataSandiHash: pengguna.kataSandiHash })
+      .from(pengguna)
+      .where(eq(pengguna.id, penggunaRef))
+      .for("update");
+    if (!akun || !akun.aktif || akun.kataSandiHash !== hashTerverifikasi) return null;
+
+    await tx.delete(sesiMasuk).where(lte(sesiMasuk.kedaluwarsaPada, sekarang));
+    await tx.insert(sesiMasuk).values({
+      tokenHash: hashToken(token),
+      penggunaRef,
+      dibuatPada: sekarang,
+      kedaluwarsaPada,
+    });
+    return { token, kedaluwarsaPada };
+  });
 }
 
 /**

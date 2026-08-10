@@ -59,6 +59,19 @@ describe("bacaBerkasMultipart", () => {
     });
   });
 
+  it("membedakan bidang tambahan sebagai bentuk permintaan yang tidak sah", async () => {
+    const jawab = await ujiPembacaMultipart(Buffer.from("isi"), [
+      { jenis: "bidang", nama: "peran", nilai: "guru" },
+      { jenis: "bidang", nama: "lebih", nilai: "ya" },
+      { jenis: "berkas", nilai: Buffer.from("isi") },
+    ]);
+
+    expect(jawab.status).toBe(400);
+    expect(jawab.badan).toMatchObject({
+      kesalahan: { kode: "PERMINTAAN_TIDAK_SAH" },
+    });
+  });
+
   it("menolak ketika berkas tidak ada", async () => {
     const jawab = await ujiPembacaMultipart(Buffer.alloc(0), [
       { jenis: "bidang", nama: "peran", nilai: "guru" },

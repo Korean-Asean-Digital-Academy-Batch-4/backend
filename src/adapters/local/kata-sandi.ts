@@ -73,6 +73,8 @@ export function kataSandiArgon2id(): KataSandi {
   void tiruan();
 
   return {
+    buatAwal: buatKataSandiAwal,
+
     hash: (polos) => hash(polos, PILIHAN),
 
     // Hash yang rusak, kosong, atau berformat lain dijawab `false`. Melempar

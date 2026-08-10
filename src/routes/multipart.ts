@@ -7,7 +7,7 @@ import { BATAS_UNGGAH_BYTE } from "../ports/berkas-administrasi.js";
 
 export { BATAS_UNGGAH_BYTE } from "../ports/berkas-administrasi.js";
 
-type KodeMultipart = "BERKAS_TIDAK_SAH" | "BERKAS_TERLALU_BESAR";
+type KodeMultipart = "PERMINTAAN_TIDAK_SAH" | "BERKAS_TIDAK_SAH" | "BERKAS_TERLALU_BESAR";
 
 export type HasilBacaMultipart =
   | Readonly<{
@@ -27,6 +27,12 @@ const TIDAK_SAH: HasilBacaMultipart = {
   status: 400,
   kode: "BERKAS_TIDAK_SAH",
   pesan: "Berkas multipart tidak sah.",
+};
+const BENTUK_PERMINTAAN_TIDAK_SAH: HasilBacaMultipart = {
+  berhasil: false,
+  status: 400,
+  kode: "PERMINTAAN_TIDAK_SAH",
+  pesan: "Bentuk permintaan multipart tidak sah.",
 };
 const TERLALU_BESAR: HasilBacaMultipart = {
   berhasil: false,
@@ -107,8 +113,8 @@ export function bacaBerkasMultipart(req: Request): Promise<HasilBacaMultipart> {
     req.once("error", saatGalat);
     pengurai.once("error", saatGalat);
     pengurai.once("filesLimit", () => tuntaskan(TIDAK_SAH));
-    pengurai.once("fieldsLimit", () => tuntaskan(TIDAK_SAH));
-    pengurai.once("partsLimit", () => tuntaskan(TIDAK_SAH));
+    pengurai.once("fieldsLimit", () => tuntaskan(BENTUK_PERMINTAAN_TIDAK_SAH));
+    pengurai.once("partsLimit", () => tuntaskan(BENTUK_PERMINTAAN_TIDAK_SAH));
     pengurai.on("field", (nama, nilai, info) => {
       if (info.nameTruncated || info.valueTruncated || bidang.some(([ada]) => ada === nama)) {
         tuntaskan(TIDAK_SAH);
