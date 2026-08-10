@@ -4,6 +4,8 @@ import { DatabaseError } from "pg";
 
 import type { DependensiApp } from "./dependensi-app.js";
 import { KODE, kirimKesalahan } from "./routes/amplop.js";
+import { rutaKomponen } from "./routes/administrasi/komponen.js";
+import { rutaMapel } from "./routes/administrasi/mapel.js";
 import { rutaPeriode } from "./routes/administrasi/periode.js";
 import { rutaTemplat } from "./routes/administrasi/templat.js";
 import { rutaPengguna } from "./routes/administrasi/pengguna.js";
@@ -28,6 +30,8 @@ export function buatApp(deps: DependensiApp): Express {
   app.use(rutaTemplat(deps));
   app.use(rutaPengguna(deps));
   app.use(rutaPeriode(deps));
+  app.use(rutaMapel(deps));
+  app.use(rutaKomponen(deps));
 
   // Alamat yang tidak dikenal tetap menjawab dengan amplop API.md sec 2.2,
   // bukan halaman HTML bawaan Express. Frontend hanya mengurai satu bentuk.
