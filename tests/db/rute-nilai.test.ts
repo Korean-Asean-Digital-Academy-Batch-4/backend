@@ -28,6 +28,7 @@ let app: AppUji;
 let sesiAdmin: string;
 let sesiGuruPengampu: string;
 let sesiGuruAsing: string;
+let sesiGuruWali: string;
 let sesiSiswa1: string;
 let komponen: readonly string[];
 
@@ -37,6 +38,7 @@ beforeAll(async () => {
   sesiAdmin = await masukSebagai(app, "admin");
   sesiGuruPengampu = await masukSebagai(app, "a6-guru-pengampu");
   sesiGuruAsing = await masukSebagai(app, "a6-guru-asing");
+  sesiGuruWali = await masukSebagai(app, "a6-guru-wali");
   sesiSiswa1 = await masukSebagai(app, "a6-siswa-1");
   komponen = await komponenSnapshotA6();
 });
@@ -328,7 +330,7 @@ describe("POST /api/penugasan/:id/nilai", () => {
 describe("GET /api/kelas/:id/nilai", () => {
   it("Wali Kelas membaca nilai sekelas", async () => {
     const jawab = await panggilJson(app, `/api/kelas/${A6.kelas}/nilai`, {
-      sesi: sesiGuruPengampu,
+      sesi: sesiGuruWali,
     });
     expect(jawab.status).toBe(200);
   });

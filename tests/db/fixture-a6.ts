@@ -13,6 +13,9 @@ export const A6 = {
   admin: "00000000-0000-4000-8000-000000000001",
   guruPengampu: "a6000000-0000-4000-8000-000000000011",
   guruAsing: "a6000000-0000-4000-8000-000000000012",
+  // Wali Kelas terpisah dari guru pengampu — untuk menguji bahwa Wali Kelas
+  // tidak dapat membuka/mengubah sesi Guru lain (aktor-role.md §7).
+  guruWali: "a6000000-0000-4000-8000-000000000013",
   siswa1: "a6000000-0000-4000-8000-000000000021",
   siswa2: "a6000000-0000-4000-8000-000000000022",
   siswa3: "a6000000-0000-4000-8000-000000000023",
@@ -39,6 +42,7 @@ export async function pasangFixtureA6(): Promise<void> {
       `INSERT INTO pengguna (id, nama_pengguna, nama, peran, kata_sandi_hash) VALUES
         ('${A6.guruPengampu}', 'a6-guru-pengampu', 'Guru Pengampu A6', 'guru', 'x'),
         ('${A6.guruAsing}',    'a6-guru-asing',    'Guru Asing A6',    'guru', 'x'),
+        ('${A6.guruWali}',     'a6-guru-wali',     'Guru Wali A6',     'guru', 'x'),
         ('${A6.siswa1}',       'a6-siswa-1',       'Siswa Satu',       'siswa', 'x'),
         ('${A6.siswa2}',       'a6-siswa-2',       'Siswa Dua',        'siswa', 'x'),
         ('${A6.siswa3}',       'a6-siswa-3',       'Siswa Tiga',       'siswa', 'x'),
@@ -46,7 +50,7 @@ export async function pasangFixtureA6(): Promise<void> {
       ON CONFLICT DO NOTHING`,
     );
     await klien.query(
-      `INSERT INTO guru (pengguna_ref) VALUES ('${A6.guruPengampu}'), ('${A6.guruAsing}')
+      `INSERT INTO guru (pengguna_ref) VALUES ('${A6.guruPengampu}'), ('${A6.guruAsing}'), ('${A6.guruWali}')
       ON CONFLICT DO NOTHING`,
     );
     await klien.query(
@@ -66,7 +70,7 @@ export async function pasangFixtureA6(): Promise<void> {
     );
     await klien.query(
       `INSERT INTO kelas (id, periode_ref, nama, tingkat, wali_kelas_ref) VALUES
-        ('${A6.kelas}', '${A6.periode}', 'a6-X-1', 'X', '${A6.guruPengampu}')
+        ('${A6.kelas}', '${A6.periode}', 'a6-X-1', 'X', '${A6.guruWali}')
       ON CONFLICT DO NOTHING`,
     );
     await klien.query(
