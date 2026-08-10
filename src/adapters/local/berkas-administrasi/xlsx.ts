@@ -48,7 +48,7 @@ export async function uraiDaftarSiswaXlsx(
       const nama = keTeks(baris[2]);
       const sebab = rincianSiswa(kelas, nis, nama);
       if (sebab.length > 0) {
-        bermasalah.push({ baris: indeks + 1, nis, sebab: sebab.join("; ") });
+        bermasalah.push({ baris: indeks + 1, kelas, nis, sebab: sebab.join("; ") });
       } else {
         valid.push({ baris: indeks + 1, kelas, nis, nama });
       }

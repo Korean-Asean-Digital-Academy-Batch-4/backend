@@ -6,7 +6,13 @@ export const BATAS_XLSX_TIDAK_TERKOMPRESI_BYTE = 16 * 1024 * 1024;
 export type BarisAkun = Readonly<{ baris: number; nama: string; namaPengguna: string }>;
 export type BarisSiswa = Readonly<{ baris: number; kelas: string; nis: string; nama: string }>;
 export type RincianBerkas = Readonly<{ baris: number; sebab: string }>;
-export type RincianSiswaBermasalah = Readonly<{ baris: number; nis: string; sebab: string }>;
+export type RincianSiswaBermasalah = Readonly<{
+  baris: number;
+  nis: string;
+  sebab: string;
+  /** Metadata internal parser untuk memeriksa konsistensi kelas seluruh baris. */
+  kelas?: string;
+}>;
 export type KredensialAwal = Readonly<{
   nama: string;
   namaPengguna: string;

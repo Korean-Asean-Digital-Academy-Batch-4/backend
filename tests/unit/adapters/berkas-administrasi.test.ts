@@ -190,6 +190,7 @@ describe("uraiDaftarSiswaXlsx", () => {
       bermasalah: [
         {
           baris: 2,
+          kelas: "",
           nis: "abc",
           sebab: "Kolom Kelas kosong; NIS hanya boleh berisi angka; Kolom Nama kosong",
         },
