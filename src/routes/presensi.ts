@@ -39,9 +39,28 @@ const presensiBarisSkema = z
   })
   .strict();
 
+// Regex lolos terhadap tanggal non-kalender (2026-02-30) yang ditolak
+// PostgreSQL 22008; validasi kalender di sini menjadikannya 400 yang
+// deterministik alih-alih 500 yang bergantung pada pesan basis data.
+const tanggalSesi = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, "Tanggal wajib berbentuk YYYY-MM-DD.")
+  .refine(
+    (t) => {
+      const [tahun, bulan, hari] = t.split("-").map(Number);
+      const d = new Date(Date.UTC(tahun!, bulan! - 1, hari));
+      return (
+        d.getUTCFullYear() === tahun &&
+        d.getUTCMonth() === bulan! - 1 &&
+        d.getUTCDate() === hari
+      );
+    },
+    { message: "Tanggal wajib tanggal kalender yang sah." },
+  );
+
 const buatSesiSkema = z
   .object({
-    tanggal: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Tanggal wajib berbentuk YYYY-MM-DD."),
+    tanggal: tanggalSesi,
     presensi: z.array(presensiBarisSkema).max(2000).default([]),
   })
   .strict();
