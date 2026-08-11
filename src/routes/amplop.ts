@@ -28,6 +28,7 @@ export const KODE = {
   raporTerkunci: "RAPOR_TERKUNCI",
   mapelBelumLengkap: "MAPEL_BELUM_LENGKAP",
   berkasBelumSiap: "BERKAS_BELUM_SIAP",
+  layananAiGagal: "LAYANAN_AI_GAGAL",
   kesalahanServer: "KESALAHAN_SERVER",
 } as const;
 

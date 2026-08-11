@@ -10,7 +10,19 @@ import { raporBerkasLokal } from "../../src/adapters/local/rapor-berkas/index.js
 import { buatApp } from "../../src/app.js";
 import { buatBasisData } from "../../src/db/drizzle.js";
 import type { DependensiApp } from "../../src/dependensi-app.js";
+import type { AiAdvisor } from "../../src/ports/ai-advisor.js";
 import { poolPemilik } from "./bantuan.js";
+
+/**
+ * Penasihat bawaan bagi app uji: selalu gagal lunak.
+ *
+ * Berkas tes yang memang menguji jalur AI menyuntikkan penasihatnya sendiri.
+ * Bawaan yang gagal — bukan yang menjawab — memastikan tidak ada satu pun tes
+ * lain yang diam-diam bergantung pada keluaran AI.
+ */
+function penasihatDiam(): AiAdvisor {
+  return { sarankan: () => Promise.resolve({ berhasil: false, sebab: "layanan_gagal" as const }) };
+}
 
 export type AppUji = Readonly<{ asal: string; tutup: () => Promise<void> }>;
 export type PilihanJson = Readonly<{
@@ -44,8 +56,10 @@ export async function nyalakanAppUji(pilihan: Partial<DependensiApp> = {}): Prom
   const pool = pilihan.pool ?? poolPemilik();
   const dependensi: DependensiApp = {
     pool,
+    poolRo: pilihan.poolRo ?? pool,
     db: pilihan.db ?? buatBasisData(pool),
     kataSandi: pilihan.kataSandi ?? kataSandiArgon2id(),
+    penasihatAi: pilihan.penasihatAi ?? penasihatDiam(),
     berkasAdministrasi: pilihan.berkasAdministrasi ?? berkasAdministrasiLokal(),
     penyimpanan: pilihan.penyimpanan ?? penyimpananBerkasLokal(akarBerkasUji()),
     raporBerkas: pilihan.raporBerkas ?? raporBerkasLokal(),
@@ -107,8 +121,10 @@ export function panggilMultipart(app: AppUji, jalan: string, form: FormData): Pr
 /**
  * Masuk sebagai akun fixture.
  *
- * `namaPengguna` berawalan `a6-` atau `a7-` dipakai apa adanya: kata sandi akun
- * fixture itu diganti milik fixture, lalu dipakai masuk. Akun benih bersama
+ * `namaPengguna` berawalan `a<angka>-` — `a6-`, `a7-`, `a8-`, dan seterusnya —
+ * dipakai apa adanya: kata sandi akun fixture itu diganti milik fixture, lalu
+ * dipakai masuk. Pola angkanya sengaja terbuka supaya fixture tahap berikutnya
+ * tidak diam-diam jatuh ke akun generik dan menguji siswa yang keliru. Akun benih bersama
  * (`admin`, `198001011001`, `2026001`, …) TIDAK pernah disentuh — hash mereka
  * diuji keutuhannya oleh rute-templat.test.ts; selain itu dibuat akun fixture
  * `uji-a5-<peran>` sesuai peran akun yang disebut — perilaku bawaan A5.
@@ -122,7 +138,7 @@ export async function masukSebagai(app: AppUji, namaPengguna: string): Promise<s
 
   // Akun uji fixture yang disebut eksplisit: kata sandinya diganti milik
   // fixture, lalu dipakai masuk — tanpa membuat akun baru.
-  if (/^a[67]-/.test(namaPengguna) && (peranDisebut === "guru" || peranDisebut === "siswa")) {
+  if (/^a\d+-/.test(namaPengguna) && (peranDisebut === "guru" || peranDisebut === "siswa")) {
     const hash = await kataSandiArgon2id().hash(KATA_SANDI_FIXTURE);
     await poolPemilik().query(`UPDATE pengguna SET kata_sandi_hash = $1 WHERE nama_pengguna = $2`, [
       hash,

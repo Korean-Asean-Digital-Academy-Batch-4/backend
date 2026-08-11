@@ -2,15 +2,30 @@ import { Pool, type PoolClient } from "pg";
 import { expect, inject } from "vitest";
 
 let pemilik: Pool | undefined;
+let bacaSaja: Pool | undefined;
 
 export function poolPemilik(): Pool {
   pemilik ??= new Pool({ connectionString: inject("urlPemilik"), max: 4 });
   return pemilik;
 }
 
+/**
+ * Pool `app_ro` — role jalur AI.
+ *
+ * Dipakai pengujian yang harus membuktikan penegakan basis datanya sendiri:
+ * menyambung sebagai pemilik lalu berpura-pura membaca terbatas tidak
+ * membuktikan apa pun (I-23, AC-20).
+ */
+export function poolBacaSaja(): Pool {
+  bacaSaja ??= new Pool({ connectionString: inject("urlRo"), max: 2 });
+  return bacaSaja;
+}
+
 export async function tutupPool(): Promise<void> {
   await pemilik?.end();
+  await bacaSaja?.end();
   pemilik = undefined;
+  bacaSaja = undefined;
 }
 
 /**

@@ -28,6 +28,11 @@ export const skemaKonfigurasi = z.object({
   // Direktori penyimpanan berkas rapor bagi adapter lokal. Penerapan AWS
   // memakai bucket S3 lewat adapter tersendiri — ARCHITECTURE.md Pasal 11.
   BERKAS_AKAR: z.string().min(1).default("./data/berkas"),
+  /** Berhenti pada id endpoint; `/v1/chat/completions` ditambahkan adapter. */
+  ELICE_BASE_URL: z.string().min(1, "ELICE_BASE_URL wajib diisi"),
+  ELICE_MODEL: z.string().min(1, "ELICE_MODEL wajib diisi"),
+  /** RAHASIA — Techstack.md §7. Di AWS dibaca dari SSM Parameter Store. */
+  ELICE_API_KEY: z.string().min(1, "ELICE_API_KEY wajib diisi"),
 });
 
 export const skemaKonfigurasiMigrasi = z.object({
