@@ -77,4 +77,21 @@ describe("bentukNilaiAkhirSiswa", () => {
     const hasil = bentukNilaiAkhirSiswa(komponen, [], "s1");
     expect(hasil).toEqual({ lengkap: false, nilaiAkhir: null });
   });
+
+  it("baris komponen asing tidak dianggap melengkapi komponen penugasan", () => {
+    const komponen = TEMPLAT.map((k, i) => ({ id: `k${i}`, kode: k.kode, bobot: k.bobot }));
+    const baris = [
+      ...TEMPLAT.slice(0, 7).map((k, i) => ({
+        siswaRef: "s1",
+        komponenRef: `k${i}`,
+        nilai: 80,
+      })),
+      { siswaRef: "s1", komponenRef: "komponen-asing", nilai: 80 },
+    ];
+
+    expect(bentukNilaiAkhirSiswa(komponen, baris, "s1")).toEqual({
+      lengkap: false,
+      nilaiAkhir: null,
+    });
+  });
 });
