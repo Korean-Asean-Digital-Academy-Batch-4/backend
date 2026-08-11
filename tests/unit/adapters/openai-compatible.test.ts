@@ -80,6 +80,10 @@ describe("prompt sistem — AC-18 dan AC-31", () => {
   it("menetapkan Bahasa Indonesia", () => {
     expect(PROMPT_SISTEM).toContain("Bahasa Indonesia");
   });
+
+  it("menetapkan satu bentuk sapaan, supaya keluarannya tidak berganti-ganti", () => {
+    expect(PROMPT_SISTEM).toContain('Sapa pembaca dengan "kamu"');
+  });
 });
 
 describe("susunPesanPengguna — ARCHITECTURE sec 10.1", () => {

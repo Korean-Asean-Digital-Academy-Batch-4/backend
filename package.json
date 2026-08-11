@@ -23,6 +23,7 @@
     "admin:create": "tsx src/entry/admin.ts",
     "seed:admin": "tsx src/entry/seed-admin.ts",
     "ukur:render": "tsx scripts/ukur-render-rapor.ts",
+    "uji:saran": "tsx --env-file-if-exists=.env scripts/uji-saran-ai.ts",
     "lint:migrations": "squawk migrations/*.sql",
     "periksa": "npm run format:check && npm run lint && npm run typecheck && npm run coverage",
     "coverage:bersihkan": "node --input-type=module -e \"import{rmSync}from'node:fs';for(const p of['coverage/unit','coverage/db'])rmSync(p,{recursive:true,force:true})\"",
