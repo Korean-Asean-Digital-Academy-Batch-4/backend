@@ -130,9 +130,7 @@ export async function bersihkanPencatatanA6(): Promise<void> {
     await klien.query(
       `DELETE FROM rapor WHERE kelas_ref = '${A6.kelas}' AND periode_ref = '${A6.periode}'`,
     );
-    await klien.query(
-      `DELETE FROM penugasan_komponen WHERE penugasan_ref = '${A6.penugasan}'`,
-    );
+    await klien.query(`DELETE FROM penugasan_komponen WHERE penugasan_ref = '${A6.penugasan}'`);
     await klien.query(
       `INSERT INTO penugasan_komponen (penugasan_ref, komponen_ref)
        SELECT '${A6.penugasan}', id FROM komponen_penilaian`,
@@ -164,9 +162,7 @@ export async function hapusFixtureA6(): Promise<void> {
     await klien.query(
       `DELETE FROM rapor WHERE kelas_ref = '${A6.kelas}' AND periode_ref = '${A6.periode}'`,
     );
-    await klien.query(
-      `DELETE FROM penugasan_komponen WHERE penugasan_ref = '${A6.penugasan}'`,
-    );
+    await klien.query(`DELETE FROM penugasan_komponen WHERE penugasan_ref = '${A6.penugasan}'`);
     await klien.query(`DELETE FROM penugasan WHERE id = '${A6.penugasan}'`);
     await klien.query(`DELETE FROM kelas_siswa WHERE kelas_ref = '${A6.kelas}'`);
     await klien.query(`DELETE FROM kelas WHERE id = '${A6.kelas}'`);

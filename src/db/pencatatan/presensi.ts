@@ -473,10 +473,7 @@ export async function hapusSesi(
         pesan: "Rapor sudah final. Penghapusan sesi hanya dapat dilakukan Administrator.",
       };
     }
-    const terhapus = await tx
-      .delete(sesi)
-      .where(eq(sesi.id, sesiRef))
-      .returning({ id: sesi.id });
+    const terhapus = await tx.delete(sesi).where(eq(sesi.id, sesiRef)).returning({ id: sesi.id });
     if (terhapus.length !== 1) {
       throw new Error("Penghapusan sesi tidak memengaruhi tepat satu baris.");
     }
@@ -489,9 +486,7 @@ export async function presensiSiswaPerKelas(
   db: BasisData,
   kelasRef: string,
   siswaRef: string,
-): Promise<
-  readonly Readonly<{ mapel_nama: string; ada_sesi: boolean; persen: number | null }>[]
-> {
+): Promise<readonly Readonly<{ mapel_nama: string; ada_sesi: boolean; persen: number | null }>[]> {
   const baris = await db
     .select({
       penugasanRef: penugasan.id,
@@ -501,10 +496,7 @@ export async function presensiSiswaPerKelas(
     .from(penugasan)
     .innerJoin(mapel, eq(mapel.id, penugasan.mapelRef))
     .leftJoin(sesi, eq(sesi.penugasanRef, penugasan.id))
-    .leftJoin(
-      presensi,
-      and(eq(presensi.sesiRef, sesi.id), eq(presensi.siswaRef, siswaRef)),
-    )
+    .leftJoin(presensi, and(eq(presensi.sesiRef, sesi.id), eq(presensi.siswaRef, siswaRef)))
     .where(eq(penugasan.kelasRef, kelasRef))
     .orderBy(asc(mapel.kode), asc(penugasan.id), asc(sesi.tanggal), asc(sesi.id));
 

@@ -90,8 +90,14 @@ describe("GET /api/penugasan/:id/siswa", () => {
       panggilJson(app, `/api/penugasan/${UUID_TIDAK_ADA}/siswa`, { sesi: sesiGuruPengampu }),
       panggilJson(app, `/api/penugasan/${A6.penugasan}/siswa`),
     ]);
-    expect(tidakSah).toMatchObject({ status: 400, badan: { kesalahan: { kode: "PERMINTAAN_TIDAK_SAH" } } });
-    expect(tidakAda).toMatchObject({ status: 404, badan: { kesalahan: { kode: "TIDAK_DITEMUKAN" } } });
+    expect(tidakSah).toMatchObject({
+      status: 400,
+      badan: { kesalahan: { kode: "PERMINTAAN_TIDAK_SAH" } },
+    });
+    expect(tidakAda).toMatchObject({
+      status: 404,
+      badan: { kesalahan: { kode: "TIDAK_DITEMUKAN" } },
+    });
     expect(anonim.status).toBe(401);
   });
 });
@@ -119,29 +125,35 @@ describe("POST dan GET /api/penugasan/:id/sesi", () => {
   });
 
   it("GET mendaftar sesi tanggal YYYY-MM-DD beserta ringkasan", async () => {
-    const id12 = await idSesi(await buatSesi("2026-08-12", [
-      { siswa_ref: A6.siswa1, status: "hadir", catatan: null },
-    ]));
-    const id11 = await idSesi(await buatSesi("2026-08-11", [
-      { siswa_ref: A6.siswa1, status: "sakit", catatan: null },
-      { siswa_ref: A6.siswa2, status: "izin", catatan: null },
-    ]));
+    const id12 = await idSesi(
+      await buatSesi("2026-08-12", [{ siswa_ref: A6.siswa1, status: "hadir", catatan: null }]),
+    );
+    const id11 = await idSesi(
+      await buatSesi("2026-08-11", [
+        { siswa_ref: A6.siswa1, status: "sakit", catatan: null },
+        { siswa_ref: A6.siswa2, status: "izin", catatan: null },
+      ]),
+    );
     const jawab = await panggilJson(app, `/api/penugasan/${A6.penugasan}/sesi`, {
       sesi: sesiGuruPengampu,
     });
     expect(jawab.status).toBe(200);
-    expect(jawab.badan).toEqual({ data: { sesi: [
-      {
-        id: id11,
-        tanggal: "2026-08-11",
-        ringkasan: { hadir: 0, izin: 1, sakit: 1, alpa: 1 },
+    expect(jawab.badan).toEqual({
+      data: {
+        sesi: [
+          {
+            id: id11,
+            tanggal: "2026-08-11",
+            ringkasan: { hadir: 0, izin: 1, sakit: 1, alpa: 1 },
+          },
+          {
+            id: id12,
+            tanggal: "2026-08-12",
+            ringkasan: { hadir: 1, izin: 0, sakit: 0, alpa: 2 },
+          },
+        ],
       },
-      {
-        id: id12,
-        tanggal: "2026-08-12",
-        ringkasan: { hadir: 1, izin: 0, sakit: 0, alpa: 2 },
-      },
-    ] } });
+    });
   });
 
   it("menolak sesi kedua penugasan-tanggal dengan 409 SESI_SUDAH_ADA — I-14", async () => {
@@ -181,9 +193,18 @@ describe("POST dan GET /api/penugasan/:id/sesi", () => {
   it("payload strict, status/catatan salah, UUID siswa salah, dan tanggal non-kalender ditolak 400", async () => {
     const badan = [
       { tanggal: "2026-08-11", presensi: [], tambahan: true },
-      { tanggal: "2026-08-11", presensi: [{ siswa_ref: A6.siswa1, status: "terlambat", catatan: null }] },
-      { tanggal: "2026-08-11", presensi: [{ siswa_ref: A6.siswa1, status: "hadir", catatan: "x".repeat(201) }] },
-      { tanggal: "2026-08-11", presensi: [{ siswa_ref: "bukan-uuid", status: "hadir", catatan: null }] },
+      {
+        tanggal: "2026-08-11",
+        presensi: [{ siswa_ref: A6.siswa1, status: "terlambat", catatan: null }],
+      },
+      {
+        tanggal: "2026-08-11",
+        presensi: [{ siswa_ref: A6.siswa1, status: "hadir", catatan: "x".repeat(201) }],
+      },
+      {
+        tanggal: "2026-08-11",
+        presensi: [{ siswa_ref: "bukan-uuid", status: "hadir", catatan: null }],
+      },
       { tanggal: "2026-02-30", presensi: [] },
     ];
     for (const satu of badan) {
@@ -199,10 +220,26 @@ describe("POST dan GET /api/penugasan/:id/sesi", () => {
 
   it("menolak UUID penugasan tidak sah, Guru asing, Wali Kelas, dan Siswa", async () => {
     const [uuid, asing, wali, siswa] = await Promise.all([
-      panggilJson(app, "/api/penugasan/bukan-uuid/sesi", { metode: "POST", sesi: sesiGuruPengampu, badan: { tanggal: "2026-08-11" } }),
-      panggilJson(app, `/api/penugasan/${A6.penugasan}/sesi`, { metode: "POST", sesi: sesiGuruAsing, badan: { tanggal: "2026-08-11" } }),
-      panggilJson(app, `/api/penugasan/${A6.penugasan}/sesi`, { metode: "POST", sesi: sesiGuruWali, badan: { tanggal: "2026-08-11" } }),
-      panggilJson(app, `/api/penugasan/${A6.penugasan}/sesi`, { metode: "POST", sesi: sesiSiswa1, badan: { tanggal: "2026-08-11" } }),
+      panggilJson(app, "/api/penugasan/bukan-uuid/sesi", {
+        metode: "POST",
+        sesi: sesiGuruPengampu,
+        badan: { tanggal: "2026-08-11" },
+      }),
+      panggilJson(app, `/api/penugasan/${A6.penugasan}/sesi`, {
+        metode: "POST",
+        sesi: sesiGuruAsing,
+        badan: { tanggal: "2026-08-11" },
+      }),
+      panggilJson(app, `/api/penugasan/${A6.penugasan}/sesi`, {
+        metode: "POST",
+        sesi: sesiGuruWali,
+        badan: { tanggal: "2026-08-11" },
+      }),
+      panggilJson(app, `/api/penugasan/${A6.penugasan}/sesi`, {
+        metode: "POST",
+        sesi: sesiSiswa1,
+        badan: { tanggal: "2026-08-11" },
+      }),
     ]);
     expect(uuid.status).toBe(400);
     expect(asing.status).toBe(403);
@@ -278,9 +315,11 @@ describe("POST dan GET /api/penugasan/:id/sesi", () => {
 
 describe("GET dan PUT /api/sesi/:id", () => {
   it("GET mengembalikan sesi lengkap snake_case dengan seluruh siswa", async () => {
-    const id = await idSesi(await buatSesi("2026-08-11", [
-      { siswa_ref: A6.siswa1, status: "hadir", catatan: "Tepat waktu" },
-    ]));
+    const id = await idSesi(
+      await buatSesi("2026-08-11", [
+        { siswa_ref: A6.siswa1, status: "hadir", catatan: "Tepat waktu" },
+      ]),
+    );
     const jawab = await panggilJson(app, `/api/sesi/${id}`, { sesi: sesiGuruPengampu });
     expect(jawab.status).toBe(200);
     expect(jawab.badan).toEqual({
@@ -318,7 +357,9 @@ describe("GET dan PUT /api/sesi/:id", () => {
       { siswa_ref: A6.siswa2, status: "sakit", catatan: null },
       { siswa_ref: A6.siswa3, status: "alpa", catatan: null },
     ]);
-    expect(jawab).toEqual(expect.objectContaining({ status: 200, badan: { data: { diperbarui: 3 } } }));
+    expect(jawab).toEqual(
+      expect.objectContaining({ status: 200, badan: { data: { diperbarui: 3 } } }),
+    );
     const status = await statusSesi(id);
     expect(status).toEqual([
       { siswa_ref: A6.siswa1, status: "izin", catatan: "Surat" },
@@ -331,10 +372,12 @@ describe("GET dan PUT /api/sesi/:id", () => {
     const id = await idSesi(await buatSesi("2026-08-11", []));
     const badan = [
       { presensi: [{ siswa_ref: A6.siswaAsing, status: "hadir", catatan: null }] },
-      { presensi: [
-        { siswa_ref: A6.siswa1, status: "hadir", catatan: null },
-        { siswa_ref: A6.siswa1, status: "izin", catatan: null },
-      ] },
+      {
+        presensi: [
+          { siswa_ref: A6.siswa1, status: "hadir", catatan: null },
+          { siswa_ref: A6.siswa1, status: "izin", catatan: null },
+        ],
+      },
       { presensi: [{ siswa_ref: A6.siswa1, status: "hadir", catatan: null }] },
       { presensi: [] },
       { presensi: [], tambahan: true },
@@ -342,7 +385,9 @@ describe("GET dan PUT /api/sesi/:id", () => {
     ];
     for (const satu of badan) {
       const jawab = await panggilJson(app, `/api/sesi/${id}/presensi`, {
-        metode: "PUT", sesi: sesiGuruPengampu, badan: satu,
+        metode: "PUT",
+        sesi: sesiGuruPengampu,
+        badan: satu,
       });
       expect(jawab.status).toBe(400);
     }
@@ -351,21 +396,40 @@ describe("GET dan PUT /api/sesi/:id", () => {
 
   it("PUT ditolak bagi Guru asing, Wali Kelas, Siswa, dan Guru saat rapor final", async () => {
     const id = await idSesi(await buatSesi("2026-08-11", []));
-    const payload = { presensi: [
-      { siswa_ref: A6.siswa1, status: "hadir", catatan: null },
-      { siswa_ref: A6.siswa2, status: "alpa", catatan: null },
-      { siswa_ref: A6.siswa3, status: "alpa", catatan: null },
-    ] };
+    const payload = {
+      presensi: [
+        { siswa_ref: A6.siswa1, status: "hadir", catatan: null },
+        { siswa_ref: A6.siswa2, status: "alpa", catatan: null },
+        { siswa_ref: A6.siswa3, status: "alpa", catatan: null },
+      ],
+    };
     for (const sesi of [sesiGuruAsing, sesiGuruWali, sesiSiswa1]) {
-      const jawab = await panggilJson(app, `/api/sesi/${id}/presensi`, { metode: "PUT", sesi, badan: payload });
+      const jawab = await panggilJson(app, `/api/sesi/${id}/presensi`, {
+        metode: "PUT",
+        sesi,
+        badan: payload,
+      });
       expect(jawab.status).toBe(403);
     }
     await finalisasiRaporA6();
     const terkunci = await panggilJson(app, `/api/sesi/${id}/presensi`, {
-      metode: "PUT", sesi: sesiGuruPengampu, badan: payload,
+      metode: "PUT",
+      sesi: sesiGuruPengampu,
+      badan: payload,
     });
-    expect(terkunci).toMatchObject({ status: 409, badan: { kesalahan: { kode: "RAPOR_TERKUNCI" } } });
-    expect((await panggilJson(app, `/api/sesi/${id}/presensi`, { metode: "PUT", sesi: sesiAdmin, badan: payload })).status).toBe(200);
+    expect(terkunci).toMatchObject({
+      status: 409,
+      badan: { kesalahan: { kode: "RAPOR_TERKUNCI" } },
+    });
+    expect(
+      (
+        await panggilJson(app, `/api/sesi/${id}/presensi`, {
+          metode: "PUT",
+          sesi: sesiAdmin,
+          badan: payload,
+        })
+      ).status,
+    ).toBe(200);
     await kembalikanRaporDraftA6();
   });
 
@@ -431,9 +495,22 @@ describe("GET dan PUT /api/sesi/:id", () => {
   });
 
   it("UUID tidak sah dijawab 400 dan sesi yang tidak ada 404", async () => {
-    for (const [jalan, status] of [["bukan-uuid", 400], [UUID_TIDAK_ADA, 404]] as const) {
-      expect((await panggilJson(app, `/api/sesi/${jalan}`, { sesi: sesiGuruPengampu })).status).toBe(status);
-      expect((await panggilJson(app, `/api/sesi/${jalan}/presensi`, { metode: "PUT", sesi: sesiGuruPengampu, badan: { presensi: [] } })).status).toBe(status);
+    for (const [jalan, status] of [
+      ["bukan-uuid", 400],
+      [UUID_TIDAK_ADA, 404],
+    ] as const) {
+      expect(
+        (await panggilJson(app, `/api/sesi/${jalan}`, { sesi: sesiGuruPengampu })).status,
+      ).toBe(status);
+      expect(
+        (
+          await panggilJson(app, `/api/sesi/${jalan}/presensi`, {
+            metode: "PUT",
+            sesi: sesiGuruPengampu,
+            badan: { presensi: [] },
+          })
+        ).status,
+      ).toBe(status);
     }
   });
 });
@@ -459,7 +536,10 @@ describe("DELETE /api/sesi/:id", () => {
   it("rapor final mengunci Guru tetapi Administrator dapat menghapus — I-22", async () => {
     const id = await idSesi(await buatSesi("2026-08-11", []));
     await finalisasiRaporA6();
-    expect(await hapusSesi(id)).toMatchObject({ status: 409, badan: { kesalahan: { kode: "RAPOR_TERKUNCI" } } });
+    expect(await hapusSesi(id)).toMatchObject({
+      status: 409,
+      badan: { kesalahan: { kode: "RAPOR_TERKUNCI" } },
+    });
     expect((await hapusSesi(id, sesiAdmin)).status).toBe(204);
     await kembalikanRaporDraftA6();
   });
@@ -517,18 +597,34 @@ describe("GET /api/kelas/:id/presensi", () => {
   it("mengembalikan seluruh siswa dan mapel tanpa sesi sebagai null", async () => {
     const jawab = await panggilJson(app, `/api/kelas/${A6.kelas}/presensi`, { sesi: sesiGuruWali });
     expect(jawab.status).toBe(200);
-    expect(jawab.badan).toEqual({ data: { siswa: [
-      { siswa_ref: A6.siswa2, nama: "Siswa Dua", per_mapel: [{ mapel_nama: "Biologi A6", ada_sesi: false, persen: null }] },
-      { siswa_ref: A6.siswa1, nama: "Siswa Satu", per_mapel: [{ mapel_nama: "Biologi A6", ada_sesi: false, persen: null }] },
-      { siswa_ref: A6.siswa3, nama: "Siswa Tiga", per_mapel: [{ mapel_nama: "Biologi A6", ada_sesi: false, persen: null }] },
-    ] } });
+    expect(jawab.badan).toEqual({
+      data: {
+        siswa: [
+          {
+            siswa_ref: A6.siswa2,
+            nama: "Siswa Dua",
+            per_mapel: [{ mapel_nama: "Biologi A6", ada_sesi: false, persen: null }],
+          },
+          {
+            siswa_ref: A6.siswa1,
+            nama: "Siswa Satu",
+            per_mapel: [{ mapel_nama: "Biologi A6", ada_sesi: false, persen: null }],
+          },
+          {
+            siswa_ref: A6.siswa3,
+            nama: "Siswa Tiga",
+            per_mapel: [{ mapel_nama: "Biologi A6", ada_sesi: false, persen: null }],
+          },
+        ],
+      },
+    });
   });
 
   it("menghitung 1/3=33.33, 2/3=66.67; izin dan sakit hadir — I-17, I-18, AC-29", async () => {
     await buatTigaSesi();
-    const siswa = dataDari<{ siswa: Array<{ siswa_ref: string; per_mapel: Array<{ persen: number }> }> }>(
-      await panggilJson(app, `/api/kelas/${A6.kelas}/presensi`, { sesi: sesiAdmin }),
-    ).siswa;
+    const siswa = dataDari<{
+      siswa: Array<{ siswa_ref: string; per_mapel: Array<{ persen: number }> }>;
+    }>(await panggilJson(app, `/api/kelas/${A6.kelas}/presensi`, { sesi: sesiAdmin })).siswa;
     expect(siswa.find((s) => s.siswa_ref === A6.siswa1)?.per_mapel[0]?.persen).toBe(33.33);
     expect(siswa.find((s) => s.siswa_ref === A6.siswa2)?.per_mapel[0]?.persen).toBe(66.67);
     expect(siswa.find((s) => s.siswa_ref === A6.siswa3)?.per_mapel[0]?.persen).toBe(66.67);
@@ -548,14 +644,20 @@ describe("GET /api/kelas/:id/presensi", () => {
   });
 
   it("UUID kelas tidak sah dijawab 400 dan kelas tak ada 404 bagi Administrator", async () => {
-    expect((await panggilJson(app, "/api/kelas/bukan-uuid/presensi", { sesi: sesiAdmin })).status).toBe(400);
-    expect((await panggilJson(app, `/api/kelas/${UUID_TIDAK_ADA}/presensi`, { sesi: sesiAdmin })).status).toBe(404);
+    expect(
+      (await panggilJson(app, "/api/kelas/bukan-uuid/presensi", { sesi: sesiAdmin })).status,
+    ).toBe(400);
+    expect(
+      (await panggilJson(app, `/api/kelas/${UUID_TIDAK_ADA}/presensi`, { sesi: sesiAdmin })).status,
+    ).toBe(404);
   });
 
   it("jumlah kueri tidak bertambah bersama jumlah siswa (tanpa N+1)", async () => {
     const mata = vi.spyOn(poolPemilik(), "query");
     try {
-      expect((await panggilJson(app, `/api/kelas/${A6.kelas}/presensi`, { sesi: sesiAdmin })).status).toBe(200);
+      expect(
+        (await panggilJson(app, `/api/kelas/${A6.kelas}/presensi`, { sesi: sesiAdmin })).status,
+      ).toBe(200);
       const kecil = mata.mock.calls.length;
       mata.mockRestore();
       await poolPemilik().query(
@@ -564,12 +666,17 @@ describe("GET /api/kelas/:id/presensi", () => {
       );
       const besarMata = vi.spyOn(poolPemilik(), "query");
       try {
-        expect((await panggilJson(app, `/api/kelas/${A6.kelas}/presensi`, { sesi: sesiAdmin })).status).toBe(200);
+        expect(
+          (await panggilJson(app, `/api/kelas/${A6.kelas}/presensi`, { sesi: sesiAdmin })).status,
+        ).toBe(200);
         expect(besarMata.mock.calls.length).toBe(kecil);
         expect(kecil).toBeLessThanOrEqual(7);
       } finally {
         besarMata.mockRestore();
-        await poolPemilik().query(`DELETE FROM kelas_siswa WHERE kelas_ref = $1 AND siswa_ref = $2`, [A6.kelas, A6.siswaAsing]);
+        await poolPemilik().query(
+          `DELETE FROM kelas_siswa WHERE kelas_ref = $1 AND siswa_ref = $2`,
+          [A6.kelas, A6.siswaAsing],
+        );
       }
     } finally {
       if (vi.isMockFunction(poolPemilik().query)) mata.mockRestore();
@@ -582,10 +689,12 @@ describe("GET /api/saya/presensi", () => {
     await buatTigaSesi();
     const jawab = await panggilJson(app, "/api/saya/presensi", { sesi: sesiSiswa1 });
     expect(jawab.status).toBe(200);
-    expect(jawab.badan).toEqual({ data: {
-      periode_nama: "a6-2026/2027 Ganjil",
-      mapel: [{ mapel_nama: "Biologi A6", ada_sesi: true, persen: 33.33 }],
-    } });
+    expect(jawab.badan).toEqual({
+      data: {
+        periode_nama: "a6-2026/2027 Ganjil",
+        mapel: [{ mapel_nama: "Biologi A6", ada_sesi: true, persen: 33.33 }],
+      },
+    });
     expect(JSON.stringify(jawab.badan)).not.toContain("tanggal");
     expect(JSON.stringify(jawab.badan)).not.toContain(A6.siswa2);
   });
@@ -604,15 +713,25 @@ describe("GET /api/saya/presensi", () => {
 
   it("izin dan sakit dihitung hadir; penyebut tetap seluruh sesi", async () => {
     await buatTigaSesi();
-    const jawab = await panggilJson(app, "/api/saya/presensi", { sesi: await masukSebagai(app, "a6-siswa-2") });
+    const jawab = await panggilJson(app, "/api/saya/presensi", {
+      sesi: await masukSebagai(app, "a6-siswa-2"),
+    });
     expect(dataDari<{ mapel: Array<{ persen: number }> }>(jawab).mapel[0]?.persen).toBe(66.67);
   });
 
   it("hapus satu sesi menyesuaikan persen dari 33.33 menjadi 50 — AC-25", async () => {
     const ids = await buatTigaSesi();
-    expect(dataDari<{ mapel: Array<{ persen: number }> }>(await panggilJson(app, "/api/saya/presensi", { sesi: sesiSiswa1 })).mapel[0]?.persen).toBe(33.33);
+    expect(
+      dataDari<{ mapel: Array<{ persen: number }> }>(
+        await panggilJson(app, "/api/saya/presensi", { sesi: sesiSiswa1 }),
+      ).mapel[0]?.persen,
+    ).toBe(33.33);
     expect((await hapusSesi(ids[2]!)).status).toBe(204);
-    expect(dataDari<{ mapel: Array<{ persen: number }> }>(await panggilJson(app, "/api/saya/presensi", { sesi: sesiSiswa1 })).mapel[0]?.persen).toBe(50);
+    expect(
+      dataDari<{ mapel: Array<{ persen: number }> }>(
+        await panggilJson(app, "/api/saya/presensi", { sesi: sesiSiswa1 }),
+      ).mapel[0]?.persen,
+    ).toBe(50);
   });
 
   it("tanpa sesi mengembalikan ada_sesi=false dan persen=null", async () => {
@@ -622,7 +741,10 @@ describe("GET /api/saya/presensi", () => {
 
   it("Siswa di luar kelas hanya memperoleh data kosong dan peran lain ditolak", async () => {
     const asing = await panggilJson(app, "/api/saya/presensi", { sesi: sesiSiswaAsing });
-    expect(asing).toMatchObject({ status: 200, badan: { data: { periode_nama: null, mapel: [] } } });
+    expect(asing).toMatchObject({
+      status: 200,
+      badan: { data: { periode_nama: null, mapel: [] } },
+    });
     for (const sesi of [sesiAdmin, sesiGuruPengampu, sesiGuruWali]) {
       expect((await panggilJson(app, "/api/saya/presensi", { sesi })).status).toBe(403);
     }
@@ -645,7 +767,9 @@ async function selesaiDalam(promise: Promise<unknown>, milidetik: number): Promi
 
 function buatSesi(tanggal: string, presensi: BarisMasukan[], sesi = sesiGuruPengampu) {
   return panggilJson(app, `/api/penugasan/${A6.penugasan}/sesi`, {
-    metode: "POST", sesi, badan: { tanggal, presensi },
+    metode: "POST",
+    sesi,
+    badan: { tanggal, presensi },
   });
 }
 
@@ -656,7 +780,9 @@ async function idSesi(jawab: Awaited<ReturnType<typeof buatSesi>>): Promise<stri
 
 function ubahSesi(id: string, presensi: BarisMasukan[]) {
   return panggilJson(app, `/api/sesi/${id}/presensi`, {
-    metode: "PUT", sesi: sesiGuruPengampu, badan: { presensi },
+    metode: "PUT",
+    sesi: sesiGuruPengampu,
+    badan: { presensi },
   });
 }
 
@@ -666,37 +792,46 @@ function hapusSesi(id: string, sesi = sesiGuruPengampu) {
 
 async function jumlahSesi(): Promise<number> {
   const hasil = await poolPemilik().query<{ jumlah: string }>(
-    `SELECT count(*)::text AS jumlah FROM sesi WHERE penugasan_ref = $1`, [A6.penugasan],
+    `SELECT count(*)::text AS jumlah FROM sesi WHERE penugasan_ref = $1`,
+    [A6.penugasan],
   );
   return Number(hasil.rows[0]?.jumlah ?? 0);
 }
 
 async function jumlahPresensi(): Promise<number> {
   const hasil = await poolPemilik().query<{ jumlah: string }>(
-    `SELECT count(*)::text AS jumlah FROM presensi p JOIN sesi s ON s.id = p.sesi_ref WHERE s.penugasan_ref = $1`, [A6.penugasan],
+    `SELECT count(*)::text AS jumlah FROM presensi p JOIN sesi s ON s.id = p.sesi_ref WHERE s.penugasan_ref = $1`,
+    [A6.penugasan],
   );
   return Number(hasil.rows[0]?.jumlah ?? 0);
 }
 
-async function statusSesi(id: string): Promise<Array<{ siswa_ref: string; status: string; catatan: string | null }>> {
+async function statusSesi(
+  id: string,
+): Promise<Array<{ siswa_ref: string; status: string; catatan: string | null }>> {
   const hasil = await poolPemilik().query(
-    `SELECT siswa_ref, status, catatan FROM presensi WHERE sesi_ref = $1 ORDER BY siswa_ref`, [id],
+    `SELECT siswa_ref, status, catatan FROM presensi WHERE sesi_ref = $1 ORDER BY siswa_ref`,
+    [id],
   );
   return hasil.rows as Array<{ siswa_ref: string; status: string; catatan: string | null }>;
 }
 
 async function buatTigaSesi(): Promise<string[]> {
   return Promise.all([
-    idSesi(await buatSesi("2026-08-11", [
-      { siswa_ref: A6.siswa1, status: "hadir", catatan: null },
-      { siswa_ref: A6.siswa2, status: "izin", catatan: null },
-      { siswa_ref: A6.siswa3, status: "sakit", catatan: null },
-    ])),
-    idSesi(await buatSesi("2026-08-12", [
-      { siswa_ref: A6.siswa1, status: "alpa", catatan: null },
-      { siswa_ref: A6.siswa2, status: "sakit", catatan: null },
-      { siswa_ref: A6.siswa3, status: "hadir", catatan: null },
-    ])),
+    idSesi(
+      await buatSesi("2026-08-11", [
+        { siswa_ref: A6.siswa1, status: "hadir", catatan: null },
+        { siswa_ref: A6.siswa2, status: "izin", catatan: null },
+        { siswa_ref: A6.siswa3, status: "sakit", catatan: null },
+      ]),
+    ),
+    idSesi(
+      await buatSesi("2026-08-12", [
+        { siswa_ref: A6.siswa1, status: "alpa", catatan: null },
+        { siswa_ref: A6.siswa2, status: "sakit", catatan: null },
+        { siswa_ref: A6.siswa3, status: "hadir", catatan: null },
+      ]),
+    ),
     idSesi(await buatSesi("2026-08-13", [])),
   ]);
 }
@@ -780,7 +915,9 @@ async function pasangKeanggotaanLamaSiswa1(): Promise<void> {
 
 async function hapusKeanggotaanLamaSiswa1(): Promise<void> {
   const pool = poolPemilik();
-  await pool.query(`DELETE FROM kelas_siswa WHERE kelas_ref = 'a6000000-0000-4000-8000-000000000151'`);
+  await pool.query(
+    `DELETE FROM kelas_siswa WHERE kelas_ref = 'a6000000-0000-4000-8000-000000000151'`,
+  );
   await pool.query(`DELETE FROM kelas WHERE id = 'a6000000-0000-4000-8000-000000000151'`);
   await pool.query(`DELETE FROM periode WHERE id = 'a6000000-0000-4000-8000-000000000141'`);
   await pool.query(`DELETE FROM tahun_ajaran WHERE id = 'a6000000-0000-4000-8000-000000000131'`);

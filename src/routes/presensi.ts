@@ -50,9 +50,7 @@ const tanggalSesi = z
       const [tahun, bulan, hari] = t.split("-").map(Number);
       const d = new Date(Date.UTC(tahun!, bulan! - 1, hari));
       return (
-        d.getUTCFullYear() === tahun &&
-        d.getUTCMonth() === bulan! - 1 &&
-        d.getUTCDate() === hari
+        d.getUTCFullYear() === tahun && d.getUTCMonth() === bulan! - 1 && d.getUTCDate() === hari
       );
     },
     { message: "Tanggal wajib tanggal kalender yang sah." },
@@ -373,9 +371,7 @@ export function rutaPresensi(deps: Pick<DependensiApp, "pool" | "db">): Router {
         .from(kelasSiswa)
         .innerJoin(kelas, eq(kelas.id, kelasSiswa.kelasRef))
         .innerJoin(periode, eq(periode.id, kelas.periodeRef))
-        .where(
-          and(eq(kelasSiswa.siswaRef, penuntut.penggunaRef), eq(periode.aktif, true)),
-        )
+        .where(and(eq(kelasSiswa.siswaRef, penuntut.penggunaRef), eq(periode.aktif, true)))
         // Skema membatasi satu periode aktif per tahun ajaran, tetapi dapat ada
         // lebih dari satu tahun aktif akibat data administrasi. Tetap pilih
         // secara eksplisit dan stabil, bukan bergantung pada urutan heap.
