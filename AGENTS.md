@@ -2,8 +2,8 @@
 
 | Keterangan | Isi |
 |---|---|
-| **Versi** | v2.2 |
-| **Tanggal** | 8 Agustus 2026 |
+| **Versi** | v2.3 |
+| **Tanggal** | 10 Agustus 2026 |
 | **Disusun oleh** | Re:Code |
 | **Kedudukan** | Menetapkan **bagaimana agen membangun EduTrack** di atas dokumen yang sudah terkunci. Berada di luar rantai penguncian dan tidak menetapkan apa pun tentang produk |
 | **Kerangka kerja** | [ECC](https://github.com/affaan-m/ecc) — aturan, agen, dan perintah yang terpasang pada `~/.claude/` |
@@ -341,7 +341,7 @@ Enam lapis penjagaan beserta alasannya pada [DEPLOYMENT.md §6.5](../context/DEP
 
 ---
 
-## 6. Agen dan perintah
+## 6. Agen, perintah, dan delivery
 
 Terpasang pada `~/.claude/`. Gunakan yang sudah ada; jangan menulis ulang kemampuan yang tersedia.
 
@@ -362,11 +362,23 @@ Terpasang pada `~/.claude/`. Gunakan yang sudah ada; jangan menulis ulang kemamp
 | Menyelaraskan dokumen | `doc-updater` | `/update-docs` |
 | Menandai titik aman | — | `/checkpoint` |
 
-**Jalankan agen yang saling bebas secara paralel.** Tinjauan keamanan, tinjauan TypeScript, dan tinjauan basis data atas satu perubahan tidak saling bergantung, sehingga tidak ada alasan menjalankannya berurutan.
+**Delivery adalah unit kendali.** Nama agen, model, harness, dan perintah hanyalah cara mencapai hasil. Pekerjaan dinilai dari artefak dan bukti yang dikirim: perubahan terarah, tes RED yang sah, implementasi GREEN, review sesuai risiko, gerbang selesai, commit yang dapat dikembalikan, dan laporan akhir yang dapat diverifikasi. Tidak ada delivery yang dianggap lebih baik hanya karena memakai model lebih mahal atau lebih banyak agen.
 
-**Ketika agen tidak tersedia.** Sebagian harness melarang agen memanggil subagen. Tinjauan umum boleh dikerjakan sendiri; **tinjauan keamanan tidak**. Untuk autentikasi, unggah, jalur AI, presigned URL, dan rahasia, agen yang tidak dapat memanggil `security-reviewer` **berhenti dan melapor** — bukan menggantinya dengan tinjauan sendiri, dan bukan pula melanjutkan diam-diam. Manusia menjalankan `/security-scan` sebelum commit, atau memberi izin memanggil agennya. Izin itu tidak pernah tersirat.
+**Satu pemilik membawa satu irisan sampai selesai.** Secara bawaan, agen utama memegang satu siklus utuh — memahami kontrak, menulis RED, membuat GREEN, merapikan, menjalankan focused test, dan menyiapkan commit. Jangan memisahkan tes dan implementasi fitur yang sama kepada dua agen apabila keduanya harus saling menunggu atau membaca konteks yang sama.
 
-**Pemilihan model** mengikuti ECC `common/performance.md`: Haiku untuk agen ringan yang sering dipanggil, Sonnet untuk pekerjaan pengembangan utama, Opus untuk keputusan arsitektural dan analisis mendalam.
+**Delegasi mengikuti risiko dan kebebasan kerja, bukan ketersediaan agen.** Panggil subagen hanya ketika pekerjaan berbatas jelas, dapat berjalan tanpa berebut berkas atau artefak tes, dan hasilnya dapat diperiksa dengan kriteria selesai yang pendek. Biaya menjelaskan pekerjaan tidak boleh lebih besar daripada mengerjakannya langsung. Context packet subagen cukup memuat tujuan, berkas/rentang commit, kontrak terkait, fokus risiko, serta bentuk keluaran; jangan meneruskan seluruh riwayat sesi tanpa kebutuhan.
+
+**Jumlah minimum yang cukup.** Untuk perubahan biasa, satu review gabungan setelah GREEN cukup. Untuk perubahan berisiko tinggi, tambahkan review independen hanya pada dimensi yang benar-benar terlibat — misalnya keamanan untuk autentikasi/rahasia/data siswa dan basis data-concurrency untuk transaksi/race. Default satu gelombang tidak lebih dari dua reviewer; penambahan reviewer wajib didasari risiko atau temuan nyata, bukan daftar peran yang tersedia.
+
+**Paralelisme bersyarat.** Jalankan pekerjaan paralel hanya bila tidak menyunting berkas yang sama, tidak membersihkan atau menulis direktori coverage yang sama, tidak memakai fixture basis data yang saling mengganggu, dan tidak menunggu keputusan satu sama lain. Jika salah satu syarat gagal, kerjakan berurutan. Kecepatan dinding tidak boleh dibayar dengan konflik, pengulangan tes, atau bukti yang tidak dapat dipercaya.
+
+**Keluaran subagen ringkas dan dapat ditindaklanjuti.** Review hanya melaporkan temuan `CRITICAL`, `HIGH`, atau `MEDIUM` beserta `file:baris`, dampak, dan perbaikan yang dapat diuji; apabila bersih, jawab `CLEAN`. Jangan mengulang ringkasan kode yang sudah terlihat. Re-review dibatasi pada temuan dan berkas yang berubah, kecuali perubahan tersebut menggeser arsitektur atau batas keamanan.
+
+**Testing bertingkat.** Selama pembangunan gunakan tes RED tunggal, focused suite, lint, dan typecheck. Full gate dijalankan ketika satu milestone terintegrasi selesai dan sekali lagi pada keadaan final sebelum push — bukan setelah setiap suntingan kecil. Kegagalan menyimpan log lengkap; keberhasilan cukup mencatat perintah, exit code, jumlah tes, dan metrik yang menjadi bukti.
+
+**Ketika kemampuan review tidak tersedia.** Tanggung jawab delivery tidak hilang hanya karena nama agen tertentu tidak ada. Tinjauan umum boleh memakai kemampuan setara pada harness yang tersedia. Untuk autentikasi, unggah, jalur AI, presigned URL, rahasia, transaksi akademik, atau isolasi data siswa, review independen sesuai risikonya tetap wajib; apabila tidak dapat diperoleh, agen berhenti dan melaporkan bukti yang belum tersedia sebelum commit.
+
+**Pemilihan model tidak diatur dokumen ini.** Gunakan kemampuan yang tersedia dan proporsional terhadap risiko, tetapi jangan mengubah workflow, memperbanyak delegasi, atau menurunkan bukti delivery hanya karena nama model tertentu tersedia atau tidak tersedia. Model boleh berganti; kontrak, tes, review, dan gerbang selesai tidak.
 
 ---
 
@@ -633,3 +645,4 @@ Tahap yang menambah lapisan baru — rute, tabel, adapter — mengubah bentuk gr
 | 8 Agustus 2026 | **Versi 2.2 — disesuaikan dengan apa yang terbukti pada A2 dan A3.** §2 Fase 4 kini menyebut tiga perintah gerbang secara eksplisit, karena `npm run periksa` sendirian tidak menjalankan linter migrasi maupun bukti penegakan basis data. §4.1 menyatakan ambang `domain/` dipatok pada keempat metrik dan ambang global 80% baru menyala pada A5 beserta alasannya, serta mewajibkan setiap ambang dibuktikan dapat merah sebelum dipercaya. §4.2 menyebut perintah yang menjalankannya beserta alasan tesnya berurutan dan berbenih cadangan. §5.3 diperluas dengan baris `SET LOCAL` batas kunci dan batas pernyataan, konfigurasi `.squawk.toml` yang wajib berawalan titik, dan larangan menyunting migrasi yang sudah diterapkan. §6 menetapkan apa yang dilakukan ketika harness melarang pemanggilan subagen: tinjauan keamanan **berhenti dan melapor**, tidak diganti tinjauan sendiri. §12 langkah 7 dan §13 disesuaikan dengan keadaan yang sebenarnya |
 | 8 Agustus 2026 | §10 disesuaikan. Tiga pertanyaan sekolah — S-04, T-02, dan S-02 — sudah terjawab dan dikeluarkan dari daftar titik henti; barisnya diganti satu paragraf yang mencatat jawabannya. Baris nama domain diperbarui mengikuti **CK-17**: yang belum ada hanya namanya, bentuk DNS-nya sudah ditetapkan, dan penerapannya **sengaja dikerjakan paling akhir** tanpa menahan satu pun tahap Jalur A |
 | 8 Agustus 2026 | §13.2 ditulis ulang sesudah graf benar-benar dibangun: 354 simpul, 600 sisi, 20 komunitas berlabel. Ditetapkan **kewajiban menanyai graf lebih dahulu** untuk pertanyaan hubungan, dan pembaruan diikat pada gerbang tahap §8.1. Dicatat pula tiga batasnya — graf bukan sumber kebenaran, graf boleh usang tanpa memberi tahu, dan 134 sisi berujung menggantung menjadikan **ketiadaan hubungan tidak membuktikan apa-apa** |
+| 10 Agustus 2026 | **Versi 2.3 — delivery-first dan hemat token.** §6 tidak lagi menetapkan kelas model tertentu. Orkestrasi sekarang didasarkan pada artefak, risiko, dan bukti selesai: satu pemilik per irisan RED–GREEN, delegasi hanya untuk kerja berbatas dan independen, maksimal dua reviewer pada gelombang biasa, parallelism bersyarat, re-review terfokus, keluaran ringkas, dan full gate pada milestone terintegrasi serta keadaan final |

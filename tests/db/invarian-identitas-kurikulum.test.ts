@@ -260,6 +260,11 @@ describe("I-10 jumlah bobot komponen tepat 100 — AC-04", () => {
   it("menolak penghapusan satu komponen tanpa penyesuaian", async () => {
     const tolak = await harusDitolak(() =>
       dalamTransaksiBatal(async (k) => {
+        // Snapshot penugasan (dipasang fixture A6 dari templat yang sama) FK-
+        // merantai komponen benih; tanpa melepasnya lebih dulu, DELETE di bawah
+        // gagal FK dan tidak pernah mencapai trg_komponen_bobot yang diuji.
+        // Pelepasan ikut batal bersama transaksi ini.
+        await k.query(`DELETE FROM penugasan_komponen WHERE true`);
         await k.query(`DELETE FROM komponen_penilaian WHERE kode = 'T3'`);
         await k.query("SET CONSTRAINTS ALL IMMEDIATE");
       }),

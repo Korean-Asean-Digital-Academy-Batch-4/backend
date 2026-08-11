@@ -12,6 +12,8 @@ import { rutaPratinjauKelas } from "./routes/administrasi/pratinjau-kelas.js";
 import { rutaTemplat } from "./routes/administrasi/templat.js";
 import { rutaPengguna } from "./routes/administrasi/pengguna.js";
 import { rutaAuth } from "./routes/auth.js";
+import { rutaNilai } from "./routes/nilai.js";
+import { rutaPresensi } from "./routes/presensi.js";
 import { rutaHealthz } from "./routes/healthz.js";
 import { rutaSaya } from "./routes/saya.js";
 
@@ -36,6 +38,8 @@ export function buatApp(deps: DependensiApp): Express {
   app.use(rutaKomponen(deps));
   app.use(rutaPratinjauKelas(deps));
   app.use(rutaKelas(deps));
+  app.use(rutaNilai(deps));
+  app.use(rutaPresensi(deps));
 
   // Alamat yang tidak dikenal tetap menjawab dengan amplop API.md sec 2.2,
   // bukan halaman HTML bawaan Express. Frontend hanya mengurai satu bentuk.

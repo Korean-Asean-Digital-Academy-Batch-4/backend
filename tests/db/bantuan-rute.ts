@@ -9,7 +9,7 @@ import { poolPemilik } from "./bantuan.js";
 
 export type AppUji = Readonly<{ asal: string; tutup: () => Promise<void> }>;
 export type PilihanJson = Readonly<{
-  metode?: "GET" | "POST" | "PATCH" | "PUT";
+  metode?: "GET" | "POST" | "PATCH" | "PUT" | "DELETE";
   sesi?: string;
   badan?: unknown;
 }>;
@@ -83,12 +83,41 @@ export function panggilMultipart(app: AppUji, jalan: string, form: FormData): Pr
   return panggil(app, jalan, { metode: "POST", badan: form });
 }
 
+/**
+ * Masuk sebagai akun fixture.
+ *
+ * `namaPengguna` berawalan `a6-` dipakai apa adanya: kata sandi akun fixture
+ * A6 itu diganti milik fixture, lalu dipakai masuk. Akun benih bersama
+ * (`admin`, `198001011001`, `2026001`, …) TIDAK pernah disentuh — hash mereka
+ * diuji keutuhannya oleh rute-templat.test.ts; selain itu dibuat akun fixture
+ * `uji-a5-<peran>` sesuai peran akun yang disebut — perilaku bawaan A5.
+ */
 export async function masukSebagai(app: AppUji, namaPengguna: string): Promise<string> {
   const peranHasil = await poolPemilik().query<{ peran: string }>(
     `SELECT peran FROM pengguna WHERE nama_pengguna = $1`,
     [namaPengguna],
   );
-  const peran = peranHasil.rows[0]?.peran;
+  const peranDisebut = peranHasil.rows[0]?.peran;
+
+  // Akun uji A6 yang disebut eksplisit: kata sandinya diganti milik fixture,
+  // lalu dipakai masuk — tanpa membuat akun baru.
+  if (namaPengguna.startsWith("a6-") && (peranDisebut === "guru" || peranDisebut === "siswa")) {
+    const hash = await kataSandiArgon2id().hash(KATA_SANDI_FIXTURE);
+    await poolPemilik().query(`UPDATE pengguna SET kata_sandi_hash = $1 WHERE nama_pengguna = $2`, [
+      hash,
+      namaPengguna,
+    ]);
+    const jawab = await panggilJson(app, "/api/auth/masuk", {
+      metode: "POST",
+      badan: { nama_pengguna: namaPengguna, kata_sandi: KATA_SANDI_FIXTURE },
+    });
+    if (jawab.status !== 200) throw new Error("Fixture gagal membuat sesi uji.");
+    const cookie = jawab.kepala.get("set-cookie")?.match(/edutrack_sesi=([^;]+)/)?.[1];
+    if (!cookie) throw new Error("Respons fixture tidak memuat cookie sesi.");
+    return `edutrack_sesi=${cookie}`;
+  }
+
+  const peran = peranDisebut;
   if (peran !== "administrator" && peran !== "guru" && peran !== "siswa") {
     throw new Error("Peran kredensial fixture tidak dikenal.");
   }
@@ -135,7 +164,7 @@ export async function masukSebagai(app: AppUji, namaPengguna: string): Promise<s
 }
 
 type PilihanPanggil = Readonly<{
-  metode?: "GET" | "POST" | "PATCH" | "PUT";
+  metode?: "GET" | "POST" | "PATCH" | "PUT" | "DELETE";
   sesi?: string;
   jenisIsi?: string;
   badan?: string | FormData;
