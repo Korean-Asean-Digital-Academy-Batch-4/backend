@@ -18,21 +18,18 @@
  */
 export const ANGGARAN_RENDER_MS = 20_000;
 
-/** Satu komponen sebagaimana dibekukan pada `rapor_mapel.snapshot_komponen`. */
-export type KomponenCetak = Readonly<{
-  kode: string;
-  nama: string;
-  bobot: number;
-  nilai: number;
-}>;
-
-/** Satu mata pelajaran pada berkas rapor, dibaca dari salinan beku. */
+/**
+ * Satu mata pelajaran pada berkas rapor, dibaca dari salinan beku.
+ *
+ * Rincian komponen **tidak** ikut: [ARCHITECTURE.md §11.3] menetapkan tabelnya
+ * berhenti pada nilai akhir. `snapshot_komponen` tetap dibekukan di basis data
+ * sebagai dasar pertanggungjawaban angka, tetapi bukan bahan cetak (CK-A-10).
+ */
 export type MapelCetak = Readonly<{
   nama: string;
   kkm: number;
   nilaiAkhir: number;
   kehadiranPersen: number;
-  komponen: readonly KomponenCetak[];
 }>;
 
 /**
@@ -49,7 +46,6 @@ export type IsiRapor = Readonly<{
   periodeNama: string;
   waliKelasNama: string | null;
   catatanWali: string | null;
-  difinalisasiPada: Date;
   mapel: readonly MapelCetak[];
 }>;
 

@@ -1,20 +1,21 @@
-import type { IsiRapor, MapelCetak } from "../../../ports/rapor-berkas.js";
+import type { IsiRapor } from "../../../ports/rapor-berkas.js";
 
 /**
- * Tata letak berkas rapor — **SEMENTARA**.
+ * Tata letak berkas rapor — [ARCHITECTURE.md §11.3] dan **CK-A-10**.
  *
- * [Techstack.md §9] butir 2 mencatat *format rapor resmi sekolah* sebagai hal
- * yang belum diputuskan, menunggu validasi **V5** pada
- * [ATURAN-DAN-KRITERIA.md §5]. Sampai V5 turun, tata letak di bawah ini adalah
- * susunan kerja: benar isinya, belum tentu benar bentuknya.
+ * Tiga bagian, berurutan dari atas: kepala berisi periode akademik beserta
+ * identitas siswa dan wali kelas, satu tabel berkolom **No, Mata Pelajaran,
+ * KKM, Nilai Akhir, Kehadiran**, lalu catatan wali kelas di kaki. Bentuknya
+ * diambil dari rapor resmi yang dipakai sekolah, menjawab **V5**.
  *
- * Seluruh keputusan tata letak sengaja dikurung di dalam berkas ini. Penggantian
- * setelah V5 turun tidak menyentuh perender, port, lapisan data, maupun rute —
- * yang berubah hanya definisi dokumen yang dikembalikan fungsi ini.
+ * Seluruh keputusan tata letak sengaja dikurung di dalam berkas ini. Perubahan
+ * bentuk kelak tidak menyentuh perender, port, lapisan data, maupun rute.
  *
- * Angkanya dibaca dari salinan beku `rapor_mapel`, bukan dihitung ulang; itulah
- * yang membuat AC-13 tetap terpenuhi meskipun templat bobot berubah kemudian
- * ([RFC-001 §5.5]).
+ * **Rincian komponen tidak dicetak.** `rapor_mapel.snapshot_komponen` tetap
+ * dibekukan pada saat finalisasi — ia dasar pertanggungjawaban angka, bukan
+ * bahan cetak (CK-A-10). Angka pada tabel di bawah dibaca dari salinan beku
+ * itu, bukan dihitung ulang; itulah yang membuat AC-13 tetap terpenuhi
+ * meskipun templat bobot berubah kemudian ([RFC-001 §5.5]).
  */
 
 /**
@@ -39,16 +40,7 @@ export type DefinisiDokumen = Readonly<{
 /** Satu simpul isi dokumen. Bentuk rincinya urusan pdfmake, bukan urusan tipe ini. */
 type Simpul = Record<string, unknown>;
 
-/** Seluruh waktu tampil memakai WIB, sejalan dengan `+07:00` pada [API.md §2.4]. */
-const ZONA_WAKTU = "Asia/Jakarta";
-
-const PEMFORMAT_TANGGAL = new Intl.DateTimeFormat("id-ID", {
-  timeZone: ZONA_WAKTU,
-  day: "numeric",
-  month: "long",
-  year: "numeric",
-});
-
+/** Ditampilkan pada bidang yang memang belum terisi, bukan string kosong. */
 const TANPA_ISI = "—";
 
 /** Dua desimal berkoma, mengikuti `numeric(5,2)` dan kelaziman Indonesia. */
@@ -56,46 +48,17 @@ function angka(nilai: number): string {
   return nilai.toFixed(2).replace(".", ",");
 }
 
-function baris(label: string, isi: string | null): Simpul[] {
+function barisIdentitas(label: string, isi: string | null): Simpul[] {
   return [{ text: label, style: "label" }, { text: isi ?? TANPA_ISI }];
 }
 
-function tabelKomponen(mapel: MapelCetak): Simpul {
-  return {
-    table: {
-      widths: ["*", "auto", "auto"],
-      body: [
-        [
-          { text: "Komponen", style: "kepalaTabel" },
-          { text: "Bobot", style: "kepalaTabel", alignment: "right" },
-          { text: "Nilai", style: "kepalaTabel", alignment: "right" },
-        ],
-        ...mapel.komponen.map((satu) => [
-          { text: `${satu.nama} (${satu.kode})` },
-          { text: `${satu.bobot}%`, alignment: "right" },
-          { text: angka(satu.nilai), alignment: "right" },
-        ]),
-      ],
-    },
-    layout: "lightHorizontalLines",
-    margin: [0, 4, 0, 12],
-  };
-}
-
-function bagianMapel(mapel: MapelCetak): Simpul[] {
+function kepalaTabel(): Simpul[] {
   return [
-    {
-      columns: [
-        { text: mapel.nama, style: "judulMapel" },
-        {
-          text: `KKM ${mapel.kkm}   ·   Nilai akhir ${angka(mapel.nilaiAkhir)}   ·   Kehadiran ${angka(mapel.kehadiranPersen)}%`,
-          alignment: "right",
-          style: "ringkasMapel",
-        },
-      ],
-      margin: [0, 8, 0, 0],
-    },
-    tabelKomponen(mapel),
+    { text: "No", style: "kepalaTabel", alignment: "right" },
+    { text: "Mata Pelajaran", style: "kepalaTabel" },
+    { text: "KKM", style: "kepalaTabel", alignment: "right" },
+    { text: "Nilai Akhir", style: "kepalaTabel", alignment: "right" },
+    { text: "Kehadiran", style: "kepalaTabel", alignment: "right" },
   ];
 }
 
@@ -107,13 +70,10 @@ export function susunDokumenRapor(isi: IsiRapor): DefinisiDokumen {
     defaultStyle: { font: "Roboto", fontSize: 10 },
     styles: {
       judul: { fontSize: 16, bold: true },
-      subjudul: { fontSize: 11, color: "#444444", margin: [0, 2, 0, 12] },
+      subjudul: { fontSize: 11, color: "#444444", margin: [0, 2, 0, 14] },
       label: { color: "#666666" },
-      judulMapel: { fontSize: 12, bold: true },
-      ringkasMapel: { fontSize: 9, color: "#444444" },
       kepalaTabel: { bold: true, fontSize: 9 },
-      judulCatatan: { bold: true, margin: [0, 16, 0, 4] },
-      kaki: { fontSize: 8, color: "#666666", margin: [0, 24, 0, 0] },
+      judulCatatan: { bold: true, margin: [0, 20, 0, 4] },
     },
     content: [
       { text: "Rapor Semester", style: "judul" },
@@ -122,22 +82,34 @@ export function susunDokumenRapor(isi: IsiRapor): DefinisiDokumen {
         table: {
           widths: ["auto", "*"],
           body: [
-            baris("Nama", isi.siswaNama),
-            baris("NIS", isi.nis),
-            baris("Kelas", isi.kelasNama),
-            baris("Wali Kelas", isi.waliKelasNama),
+            barisIdentitas("Nama", isi.siswaNama),
+            barisIdentitas("NIS", isi.nis),
+            barisIdentitas("Kelas", isi.kelasNama),
+            barisIdentitas("Wali Kelas", isi.waliKelasNama),
           ],
         },
         layout: "noBorders",
-        margin: [0, 0, 0, 12],
+        margin: [0, 0, 0, 16],
       },
-      ...isi.mapel.flatMap(bagianMapel),
+      {
+        table: {
+          headerRows: 1,
+          widths: ["auto", "*", "auto", "auto", "auto"],
+          body: [
+            kepalaTabel(),
+            ...isi.mapel.map((satu, urutan) => [
+              { text: String(urutan + 1), alignment: "right" },
+              { text: satu.nama },
+              { text: String(satu.kkm), alignment: "right" },
+              { text: angka(satu.nilaiAkhir), alignment: "right" },
+              { text: `${angka(satu.kehadiranPersen)}%`, alignment: "right" },
+            ]),
+          ],
+        },
+        layout: "lightHorizontalLines",
+      },
       { text: "Catatan Wali Kelas", style: "judulCatatan" },
       { text: isi.catatanWali ?? TANPA_ISI },
-      {
-        text: `Difinalisasi pada ${PEMFORMAT_TANGGAL.format(isi.difinalisasiPada)}`,
-        style: "kaki",
-      },
     ],
   };
 }

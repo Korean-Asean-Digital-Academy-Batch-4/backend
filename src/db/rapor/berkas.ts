@@ -1,6 +1,5 @@
 import { asc, eq } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
-import { z } from "zod";
 
 import type { BasisData } from "../drizzle.js";
 import type { PenyimpananBerkas } from "../../ports/penyimpanan-berkas.js";
@@ -27,24 +26,6 @@ export type DependensiBerkas = Readonly<{
   raporBerkas: RaporBerkas;
   sekarang: () => Date;
 }>;
-
-/**
- * Bentuk `rapor_mapel.snapshot_komponen` divalidasi di batas aplikasi.
- *
- * Kolomnya `jsonb`, dan basis data hanya menjamin ia berupa larik
- * (`ck_rapor_mapel_snapshot`). Isinya tercetak pada rapor siswa, sehingga
- * bentuknya diperiksa di sini alih-alih dipercaya — [ARCHITECTURE.md Pasal 12].
- */
-const skemaSnapshot = z.array(
-  z
-    .object({
-      kode: z.string(),
-      nama: z.string(),
-      bobot: z.number(),
-      nilai: z.number(),
-    })
-    .strict(),
-);
 
 /** Letak berkas satu rapor di dalam penyimpanan. */
 export function kunciBerkasRapor(periodeRef: string, raporRef: string): string {
@@ -93,7 +74,6 @@ export async function bacaIsiRapor(
       kkm: raporMapel.kkm,
       nilaiAkhir: raporMapel.nilaiAkhir,
       kehadiranPersen: raporMapel.kehadiranPersen,
-      snapshotKomponen: raporMapel.snapshotKomponen,
     })
     .from(raporMapel)
     .where(eq(raporMapel.raporRef, raporRef))
@@ -106,7 +86,6 @@ export async function bacaIsiRapor(
     periodeNama: `${baris.tahunAjaranNama} ${baris.semester === "ganjil" ? "Ganjil" : "Genap"}`,
     waliKelasNama: baris.waliKelasNama,
     catatanWali: baris.catatanWali,
-    difinalisasiPada: baris.difinalisasiPada,
     mapel: Object.freeze(
       mapel.map((satu) =>
         Object.freeze({
@@ -114,7 +93,6 @@ export async function bacaIsiRapor(
           kkm: satu.kkm,
           nilaiAkhir: Number(satu.nilaiAkhir),
           kehadiranPersen: Number(satu.kehadiranPersen),
-          komponen: Object.freeze(skemaSnapshot.parse(satu.snapshotKomponen)),
         }),
       ),
     ),

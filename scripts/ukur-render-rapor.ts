@@ -25,7 +25,6 @@ import { ANGGARAN_RENDER_MS, type IsiRapor } from "../src/ports/rapor-berkas.js"
 
 const JUMLAH_RAPOR = 30;
 const JUMLAH_MAPEL = 10;
-const JUMLAH_KOMPONEN = 8;
 
 function isiContoh(nomor: number): IsiRapor {
   return {
@@ -36,18 +35,11 @@ function isiContoh(nomor: number): IsiRapor {
     waliKelasNama: "Wali Kelas Contoh",
     catatanWali:
       "Menunjukkan perkembangan yang baik pada semester ini, terutama pada mata pelajaran eksakta. Kehadiran terjaga dan keterlibatan di kelas meningkat.",
-    difinalisasiPada: new Date("2027-12-18T03:15:00.000Z"),
     mapel: Array.from({ length: JUMLAH_MAPEL }, (_, urutanMapel) => ({
       nama: `Mata Pelajaran ${urutanMapel + 1}`,
       kkm: 75,
       nilaiAkhir: 80 + (urutanMapel % 10),
       kehadiranPersen: 90 + (urutanMapel % 10),
-      komponen: Array.from({ length: JUMLAH_KOMPONEN }, (_, urutanKomponen) => ({
-        kode: `K${urutanKomponen + 1}`,
-        nama: `Komponen Penilaian ${urutanKomponen + 1}`,
-        bobot: urutanKomponen < 6 ? 10 : 20,
-        nilai: 70 + urutanKomponen,
-      })),
     })),
   };
 }
@@ -75,7 +67,7 @@ async function ukur(): Promise<void> {
 
     const terurut = [...perRapor].sort((a, b) => a - b);
     console.log(`Berkas dirender      : ${JUMLAH_RAPOR}`);
-    console.log(`Mata pelajaran/rapor : ${JUMLAH_MAPEL} × ${JUMLAH_KOMPONEN} komponen`);
+    console.log(`Mata pelajaran/rapor : ${JUMLAH_MAPEL}`);
     console.log(`Total                : ${total.toFixed(0)} ms`);
     console.log(`Rata-rata per rapor  : ${(total / JUMLAH_RAPOR).toFixed(0)} ms`);
     console.log(`Terlama satu rapor   : ${terurut.at(-1)!.toFixed(0)} ms`);
