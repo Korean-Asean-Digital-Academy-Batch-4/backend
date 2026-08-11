@@ -1,0 +1,190 @@
+name: Rilis ke AWS
+
+# Urutan rilis ditetapkan DEPLOYMENT.md sec 3.3. Setiap langkah di bawah
+# menyebut nomornya, sehingga selisih terhadap dokumen terlihat saat dibaca.
+#
+# Tanpa access key dan tanpa secret berisi kredensial: role dipinjam lewat OIDC,
+# dan tokennya berumur satu kali jalan — DEPLOYMENT.md sec 9.4.
+#
+# Dua nilai wajib disetel pada repositori sebelum workflow ini berguna:
+#
+#   secrets.AWS_ROLE_ARN   ARN role edutrack-gha-backend
+#                          → terraform -chdir=infra output -raw role_oidc_backend
+#   vars.ALAMAT_PUBLIK     alamat CloudFront, beserta skemanya, tanpa garis
+#                          miring penutup. Variabel, bukan secret: ia alamat
+#                          publik, dan secret yang tersamar pada log justru
+#                          menyulitkan penelusuran kegagalan langkah 11
+#                          → terraform -chdir=infra output -raw domain_cloudfront
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  id-token: write # tanpa ini, GitHub tidak menerbitkan token OIDC sama sekali
+  contents: read
+
+# Dua rilis yang berjalan bersamaan akan berebut alias, dan yang selesai
+# belakangan belum tentu yang paling baru. Antre, jangan batalkan: rilis yang
+# dibatalkan di tengah dapat meninggalkan skema baru dengan kode lama.
+concurrency:
+  group: rilis-produksi
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: ap-southeast-3
+  # Keempat nama disepakati Terraform dan berkas ini — DEPLOYMENT.md sec 2.4.
+  # Diterbitkan sebagai output Terraform; ditulis di sini karena workflow tidak
+  # menjalankan Terraform sama sekali.
+  ECR: edutrack
+  FUNGSI_API: edutrack-api
+  FUNGSI_MIGRATE: edutrack-migrate
+  ALIAS: live
+
+jobs:
+  rilis:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Langkah 1 — tanpa access key, tanpa secret
+      - name: Pinjam role AWS lewat OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          role-session-name: rilis-${{ github.sha }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      # arm64, karena kedua fungsi disetel arm64 — ARCHITECTURE.md Pasal 6.
+      # Runner-nya x86, sehingga emulasi wajib disiapkan lebih dahulu.
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+
+      # Langkah 2 dan 3 — tag = git SHA, BUKAN :latest
+      #
+      # Inilah yang menjawab "yang jalan sekarang commit mana?" (DEPLOYMENT.md
+      # sec 2.7). Karena Terraform sengaja tidak mengetahuinya, tag inilah satu-
+      # satunya penutup lubang yang ditinggalkan ignore_changes.
+      - name: Bangun dan dorong image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/arm64
+          push: true
+          # Lambda menolak image berupa manifest list, dan pesannya tidak
+          # menyebut attestation sama sekali.
+          provenance: false
+          tags: ${{ steps.ecr.outputs.registry }}/${{ env.ECR }}:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Susun alamat image
+        run: echo "IMAGE=${{ steps.ecr.outputs.registry }}/${{ env.ECR }}:${{ github.sha }}" >> "$GITHUB_ENV"
+
+      # Langkah 4 dan 5 — migrasi lebih dahulu, dan `wait` WAJIB
+      - name: Perbarui fungsi migrate
+        run: |
+          aws lambda update-function-code \
+            --function-name "$FUNGSI_MIGRATE" --image-uri "$IMAGE" >/dev/null
+          # update-function-code menjawab SEBELUM AWS selesai memasang image.
+          # Memanggil terlalu cepat menjalankan image LAMA, dan gejalanya berupa
+          # migrasi yang tampak berhasil tanpa mengubah apa pun.
+          aws lambda wait function-updated --function-name "$FUNGSI_MIGRATE"
+
+      # Langkah 6 — sinkron. Gagal berarti pipeline berhenti dan aplikasi TIDAK
+      # disentuh sama sekali.
+      - name: Terapkan migrasi
+        run: |
+          aws lambda invoke --function-name "$FUNGSI_MIGRATE" \
+            --cli-binary-format raw-in-base64-out --payload '{}' \
+            --cli-read-timeout 300 jawaban.json > ringkasan.json
+
+          echo "--- ringkasan invocation ---"; cat ringkasan.json
+          echo "--- jawaban fungsi ---"; cat jawaban.json; echo
+
+          # DUA pemeriksaan, dan keduanya diperlukan.
+          #
+          # `FunctionError` hanya muncul ketika fungsinya sendiri melempar.
+          # Migrasi yang gagal dilaporkan sebagai jawaban HTTP 500 DI DALAM
+          # payload, dan invocation-nya tetap berhasil — sehingga tanpa
+          # pemeriksaan kedua, rilis berlanjut di atas skema yang belum berubah.
+          if jq -e '.FunctionError' ringkasan.json >/dev/null; then
+            echo "::error::Fungsi migrate melempar galat."; exit 1
+          fi
+          # Dua bentuk jawaban diterima. Adapter membungkus jawaban aplikasi
+          # sebagai {statusCode, body} pada sebagian jalur, dan meneruskannya
+          # apa adanya pada jalur lain; yang diperiksa isinya, bukan bungkusnya.
+          if ! jq -e '(if type == "object" and has("body")
+                       then (.body | fromjson? // {}) else . end)
+                      | .data.berhasil == true' jawaban.json >/dev/null; then
+            echo "::error::Migrasi tidak melaporkan berhasil. Aplikasi tidak disentuh."; exit 1
+          fi
+
+      # Langkah 7 dan 8
+      - name: Perbarui fungsi api
+        run: |
+          aws lambda update-function-code \
+            --function-name "$FUNGSI_API" --image-uri "$IMAGE" >/dev/null
+          aws lambda wait function-updated --function-name "$FUNGSI_API"
+
+      # Langkah 9 dan 10 — memindahkan alias adalah momen rilis yang sesungguhnya
+      - name: Terbitkan version dan pindahkan alias
+        run: |
+          SEBELUM=$(aws lambda get-alias --function-name "$FUNGSI_API" \
+            --name "$ALIAS" --query FunctionVersion --output text)
+          echo "VERSION_SEBELUM=$SEBELUM" >> "$GITHUB_ENV"
+
+          BARU=$(aws lambda publish-version --function-name "$FUNGSI_API" \
+            --description "${{ github.sha }}" --query Version --output text)
+          echo "VERSION_BARU=$BARU" >> "$GITHUB_ENV"
+
+          aws lambda update-alias --function-name "$FUNGSI_API" \
+            --name "$ALIAS" --function-version "$BARU" >/dev/null
+          echo "Alias $ALIAS: $SEBELUM -> $BARU"
+
+      # Langkah 11 — lewat CloudFront, bukan langsung ke fungsinya
+      #
+      # `/api/healthz`, bukan `/healthz`: CloudFront hanya meneruskan `/api/*`
+      # ke Lambda, dan bentuk tanpa awalan akan dilayani bucket frontend —
+      # pemeriksaan yang selalu lulus dan karenanya tidak memeriksa apa pun.
+      - name: Periksa jalur nyata
+        id: periksa
+        run: |
+          for percobaan in 1 2 3 4 5 6; do
+            STATUS=$(curl -sS -o jawaban-sehat.json -w '%{http_code}' \
+              "${{ vars.ALAMAT_PUBLIK }}/api/healthz" || echo "000")
+            echo "percobaan $percobaan: $STATUS"
+            [ "$STATUS" = "200" ] && exit 0
+            # Cold start di dalam VPC memerlukan sekitar 0,8-1,5 detik
+            # (ARCHITECTURE.md Pasal 6); jeda ini memberi kelonggaran jauh di
+            # atasnya sebelum rilis dinyatakan gagal.
+            sleep 10
+          done
+          echo "::error::/api/healthz tidak menjawab 200."; cat jawaban-sehat.json; exit 1
+
+      # Langkah 12 — rollback dalam hitungan detik
+      #
+      # HANYA alias yang dikembalikan. Migrasi TIDAK dibatalkan, dan itu bukan
+      # kelalaian: migrasi wajib kompatibel mundur (DEPLOYMENT.md sec 6.3),
+      # sehingga kode versi sebelumnya tetap berjalan di atas skema baru. Ini
+      # alasan sesungguhnya aturan itu ada.
+      - name: Kembalikan alias apabila pemeriksaan gagal
+        if: failure() && steps.periksa.outcome == 'failure'
+        run: |
+          aws lambda update-alias --function-name "$FUNGSI_API" \
+            --name "$ALIAS" --function-version "$VERSION_SEBELUM" >/dev/null
+          echo "::warning::Alias dikembalikan ke version $VERSION_SEBELUM. Skema TIDAK dimundurkan."
+
+      - name: Catat apa yang berjalan sekarang
+        if: always()
+        run: |
+          {
+            echo "| Keterangan | Isi |"
+            echo "|---|---|"
+            echo "| Commit | \`${{ github.sha }}\` |"
+            echo "| Image | \`$IMAGE\` |"
+            echo "| Version | \`${VERSION_SEBELUM:-?}\` → \`${VERSION_BARU:-?}\` |"
+          } >> "$GITHUB_STEP_SUMMARY"
