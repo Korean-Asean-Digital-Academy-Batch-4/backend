@@ -16,6 +16,7 @@ import { rutaKelasRapor } from "./routes/kelas-rapor.js";
 import { rutaNilai } from "./routes/nilai.js";
 import { rutaPresensi } from "./routes/presensi.js";
 import { rutaRapor } from "./routes/rapor.js";
+import { rutaSaran } from "./routes/saran.js";
 import { rutaHealthz } from "./routes/healthz.js";
 import { rutaSaya } from "./routes/saya.js";
 
@@ -44,6 +45,7 @@ export function buatApp(deps: DependensiApp): Express {
   app.use(rutaPresensi(deps));
   app.use(rutaKelasRapor(deps));
   app.use(rutaRapor(deps));
+  app.use(rutaSaran(deps));
 
   // Alamat yang tidak dikenal tetap menjawab dengan amplop API.md sec 2.2,
   // bukan halaman HTML bawaan Express. Frontend hanya mengurai satu bentuk.

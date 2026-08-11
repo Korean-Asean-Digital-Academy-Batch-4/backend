@@ -117,9 +117,15 @@ describe("sec 9.2 — data awal", () => {
   });
 
   it("tidak meninggalkan satu pun akun bawaan", async () => {
+    // Yang diuji: migrasi dan benih tidak membuat Administrator berkata sandi
+    // dapat dipakai. Akun `uji-a5-%` dikecualikan karena ia dibuat harness
+    // pengujian (bantuan-rute.ts), bukan oleh data awal — tanpa pengecualian
+    // ini hasil tesnya bergantung pada urutan berkas tes yang kebetulan
+    // berjalan lebih dahulu.
     const hasil = await poolPemilik().query<{ jumlah: string }>(
       `SELECT count(*)::text AS jumlah FROM pengguna WHERE peran = 'administrator'
-       AND kata_sandi_hash <> 'x'`,
+       AND kata_sandi_hash <> 'x'
+       AND nama_pengguna NOT LIKE 'uji-a5-%'`,
     );
 
     expect(hasil.rows[0]?.jumlah).toBe("0");

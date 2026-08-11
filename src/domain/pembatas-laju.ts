@@ -25,6 +25,17 @@ export const BATAS_MASUK_IP = 30;
 export const JENDELA_MASUK_MS = 15 * 60 * 1000;
 
 /**
+ * Lima penekanan tombol Suggestion per jam per siswa — ARCHITECTURE.md Pasal 7.
+ *
+ * Berbeda dari BATAS_MASUK, yang dihitung di sini adalah **setiap penekanan**,
+ * bukan kegagalan: satu penekanan yang berhasil pun menggerus kredit KADA.
+ */
+export const BATAS_SUGGESTION = 5;
+
+/** Satu jam — ARCHITECTURE.md Pasal 7. */
+export const JENDELA_SUGGESTION_MS = 60 * 60 * 1000;
+
+/**
  * Awal jendela tetap yang memuat `sekarang`.
  *
  * Jendela tetap, bukan jendela bergulir. Bentuk tetap menjadikan kuncinya

@@ -39,6 +39,16 @@ export async function periksaBatas(
 }
 
 /**
+ * Menambah satu **pemakaian** pada jendela saat ini.
+ *
+ * Nama tersendiri dari {@link catatKegagalan} meskipun mekanismenya sama, karena
+ * yang dihitung berbeda: pada tombol Suggestion setiap penekanan dihitung,
+ * termasuk yang berhasil, sebab setiap penekanan menggerus kredit layanan AI
+ * ([ARCHITECTURE.md Pasal 7]). Memanggil fungsi bernama "kegagalan" di sana
+ * akan menyesatkan pembaca berikutnya.
+ */
+
+/**
  * Menambah satu kegagalan pada jendela saat ini.
  *
  * Sekalian menghapus jendela yang sudah lewat untuk kunci yang sama, di dalam
@@ -48,6 +58,15 @@ export async function periksaBatas(
  * `ON CONFLICT` menjadikan penambahan ini aman terhadap dua permintaan
  * bersamaan: keduanya menaikkan penghitung yang sama, bukan saling menimpa.
  */
+export async function catatPemakaian(
+  pool: Pool,
+  kunci: string,
+  sekarang: Date,
+  panjangJendelaMs: number,
+): Promise<void> {
+  return catatKegagalan(pool, kunci, sekarang, panjangJendelaMs);
+}
+
 export async function catatKegagalan(
   pool: Pool,
   kunci: string,
