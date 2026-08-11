@@ -7,9 +7,9 @@
     "node": ">=24"
   },
   "scripts": {
-    "dev": "tsx watch src/entry/server.ts",
+    "dev": "tsx --env-file-if-exists=.env watch src/entry/server.ts",
     "build": "tsc -p tsconfig.build.json",
-    "start": "node dist/entry/server.js",
+    "start": "node --env-file-if-exists=.env dist/entry/server.js",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "eslint .",
@@ -18,8 +18,8 @@
     "test:db": "vitest run --config vitest.config.db.ts",
     "coverage": "npm run coverage:global",
     "db:generate": "drizzle-kit generate",
-    "admin:create": "tsx src/entry/admin.ts",
-    "seed:admin": "tsx src/entry/seed-admin.ts",
+    "admin:create": "tsx --env-file-if-exists=.env src/entry/admin.ts",
+    "seed:admin": "tsx --env-file-if-exists=.env src/entry/seed-admin.ts",
     "ukur:render": "tsx scripts/ukur-render-rapor.ts",
     "lint:migrations": "squawk migrations/*.sql",
     "periksa": "npm run format:check && npm run lint && npm run typecheck && npm run coverage",
