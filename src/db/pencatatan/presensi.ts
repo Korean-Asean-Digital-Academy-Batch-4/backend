@@ -211,17 +211,20 @@ export async function buatSesi(
   try {
     return await db.transaction(async (tx) => {
       // I-22: Guru ditolak apabila rapor kelas sudah final; Administrator lanjut.
-      const [raporTerkunci] = await tx
-        .select({ id: rapor.id })
+      // Kunci seluruh rapor kelas, termasuk draft. Dengan begitu finalisasi
+      // yang berjalan serentak harus selesai sebelum keputusan I-22 dibuat.
+      const raporKelas = await tx
+        .select({ status: rapor.status })
         .from(rapor)
         .where(
           sql`${rapor.kelasRef} = ${konteks.kelasRef}
-            AND ${rapor.periodeRef} = ${konteks.periodeRef}
-            AND ${rapor.status} IN ('finalized', 'distributed')`,
+            AND ${rapor.periodeRef} = ${konteks.periodeRef}`,
         )
-        .limit(1)
-        .for("share");
-      if (raporTerkunci && input.penuntut.peran === "guru") {
+        .for("update");
+      if (
+        input.penuntut.peran === "guru" &&
+        raporKelas.some((satu) => satu.status === "finalized" || satu.status === "distributed")
+      ) {
         return {
           berhasil: false,
           jenis: "rapor_terkunci",
@@ -322,38 +325,42 @@ export async function ubahPresensiSesi(
   input: MasukanUbahSesi,
   db: BasisData,
 ): Promise<HasilPresensi<Readonly<{ diperbarui: number }>>> {
-  const [kepala] = await db
-    .select({ id: sesi.id, penugasanRef: sesi.penugasanRef })
-    .from(sesi)
-    .where(eq(sesi.id, input.sesiRef))
-    .limit(1);
-  if (!kepala) {
-    return { berhasil: false, jenis: "tidak_ditemukan", pesan: "Sesi tidak ditemukan." };
-  }
-  const konteks = await cariKonteksPenugasanPresensi(db, kepala.penugasanRef);
-  if (!konteks) {
-    return { berhasil: false, jenis: "tidak_ditemukan", pesan: "Penugasan tidak ditemukan." };
-  }
-  if (input.penuntut.peran === "guru" && konteks.guruRef !== input.penuntut.penggunaRef) {
-    return {
-      berhasil: false,
-      jenis: "kewenangan_ditolak",
-      pesan: "Anda tidak berwenang atas sesi ini.",
-    };
-  }
-
   return db.transaction(async (tx) => {
-    const [raporTerkunci] = await tx
-      .select({ id: rapor.id })
+    // Eksistensi dan otorisasi diperiksa setelah sesi dikunci agar keputusan
+    // tidak menjadi usang akibat DELETE serentak.
+    const [kepala] = await tx
+      .select({ id: sesi.id, penugasanRef: sesi.penugasanRef })
+      .from(sesi)
+      .where(eq(sesi.id, input.sesiRef))
+      .limit(1)
+      .for("update");
+    if (!kepala) {
+      return { berhasil: false, jenis: "tidak_ditemukan", pesan: "Sesi tidak ditemukan." };
+    }
+    const konteks = await cariKonteksPenugasanPresensi(tx, kepala.penugasanRef);
+    if (!konteks) {
+      return { berhasil: false, jenis: "tidak_ditemukan", pesan: "Penugasan tidak ditemukan." };
+    }
+    if (input.penuntut.peran === "guru" && konteks.guruRef !== input.penuntut.penggunaRef) {
+      return {
+        berhasil: false,
+        jenis: "kewenangan_ditolak",
+        pesan: "Anda tidak berwenang atas sesi ini.",
+      };
+    }
+
+    const raporKelas = await tx
+      .select({ status: rapor.status })
       .from(rapor)
       .where(
         sql`${rapor.kelasRef} = ${konteks.kelasRef}
-          AND ${rapor.periodeRef} = ${konteks.periodeRef}
-          AND ${rapor.status} IN ('finalized', 'distributed')`,
+          AND ${rapor.periodeRef} = ${konteks.periodeRef}`,
       )
-      .limit(1)
-      .for("share");
-    if (raporTerkunci && input.penuntut.peran === "guru") {
+      .for("update");
+    if (
+      input.penuntut.peran === "guru" &&
+      raporKelas.some((satu) => satu.status === "finalized" || satu.status === "distributed")
+    ) {
       return {
         berhasil: false,
         jenis: "rapor_terkunci",
@@ -386,6 +393,13 @@ export async function ubahPresensiSesi(
       }
       terlihat.add(satu.siswaRef);
     }
+    if (terlihat.size !== himpunan.size) {
+      return {
+        berhasil: false,
+        jenis: "permintaan_tidak_sah",
+        pesan: "Daftar presensi wajib memuat seluruh siswa dalam sesi ini.",
+      };
+    }
 
     let diperbarui = 0;
     for (const satu of input.presensi) {
@@ -401,7 +415,10 @@ export async function ubahPresensiSesi(
           sql`${presensi.sesiRef} = ${input.sesiRef} AND ${presensi.siswaRef} = ${satu.siswaRef}`,
         )
         .returning({ id: presensi.id });
-      diperbarui += berubah.length;
+      if (berubah.length !== 1) {
+        throw new Error("Pembaruan presensi tidak memengaruhi tepat satu baris.");
+      }
+      diperbarui += 1;
     }
     return { berhasil: true, data: Object.freeze({ diperbarui }) };
   });
@@ -416,45 +433,53 @@ export async function hapusSesi(
   penuntut: Readonly<{ penggunaRef: string; peran: string }>,
   db: BasisData,
 ): Promise<HasilPresensi<null>> {
-  const [kepala] = await db
-    .select({ id: sesi.id, penugasanRef: sesi.penugasanRef })
-    .from(sesi)
-    .where(eq(sesi.id, sesiRef))
-    .limit(1);
-  if (!kepala) {
-    return { berhasil: false, jenis: "tidak_ditemukan", pesan: "Sesi tidak ditemukan." };
-  }
-  const konteks = await cariKonteksPenugasanPresensi(db, kepala.penugasanRef);
-  if (!konteks) {
-    return { berhasil: false, jenis: "tidak_ditemukan", pesan: "Penugasan tidak ditemukan." };
-  }
-  if (penuntut.peran === "guru" && konteks.guruRef !== penuntut.penggunaRef) {
-    return {
-      berhasil: false,
-      jenis: "kewenangan_ditolak",
-      pesan: "Anda tidak berwenang atas sesi ini.",
-    };
-  }
-
   return db.transaction(async (tx) => {
-    const [raporTerkunci] = await tx
-      .select({ id: rapor.id })
+    const [kepala] = await tx
+      .select({ id: sesi.id, penugasanRef: sesi.penugasanRef })
+      .from(sesi)
+      .where(eq(sesi.id, sesiRef))
+      .limit(1)
+      .for("update");
+    if (!kepala) {
+      return { berhasil: false, jenis: "tidak_ditemukan", pesan: "Sesi tidak ditemukan." };
+    }
+    const konteks = await cariKonteksPenugasanPresensi(tx, kepala.penugasanRef);
+    if (!konteks) {
+      return { berhasil: false, jenis: "tidak_ditemukan", pesan: "Penugasan tidak ditemukan." };
+    }
+    if (penuntut.peran === "guru" && konteks.guruRef !== penuntut.penggunaRef) {
+      return {
+        berhasil: false,
+        jenis: "kewenangan_ditolak",
+        pesan: "Anda tidak berwenang atas sesi ini.",
+      };
+    }
+
+    const raporKelas = await tx
+      .select({ status: rapor.status })
       .from(rapor)
       .where(
         sql`${rapor.kelasRef} = ${konteks.kelasRef}
-          AND ${rapor.periodeRef} = ${konteks.periodeRef}
-          AND ${rapor.status} IN ('finalized', 'distributed')`,
+          AND ${rapor.periodeRef} = ${konteks.periodeRef}`,
       )
-      .limit(1)
-      .for("share");
-    if (raporTerkunci && penuntut.peran === "guru") {
+      .for("update");
+    if (
+      penuntut.peran === "guru" &&
+      raporKelas.some((satu) => satu.status === "finalized" || satu.status === "distributed")
+    ) {
       return {
         berhasil: false,
         jenis: "rapor_terkunci",
         pesan: "Rapor sudah final. Penghapusan sesi hanya dapat dilakukan Administrator.",
       };
     }
-    await tx.delete(sesi).where(eq(sesi.id, sesiRef));
+    const terhapus = await tx
+      .delete(sesi)
+      .where(eq(sesi.id, sesiRef))
+      .returning({ id: sesi.id });
+    if (terhapus.length !== 1) {
+      throw new Error("Penghapusan sesi tidak memengaruhi tepat satu baris.");
+    }
     return { berhasil: true, data: null };
   });
 }

@@ -42,6 +42,7 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await hapusPemicuPresensiUji();
+  await hapusKeanggotaanLamaSiswa1();
   await hapusFixtureA6();
   await app.tutup();
   await tutupPool();
@@ -49,6 +50,7 @@ afterAll(async () => {
 
 beforeEach(async () => {
   await hapusPemicuPresensiUji();
+  await hapusKeanggotaanLamaSiswa1();
   await bersihkanPencatatanA6();
 });
 
@@ -234,6 +236,37 @@ describe("POST dan GET /api/penugasan/:id/sesi", () => {
     await kembalikanRaporDraftA6();
   });
 
+  it("Guru tidak dapat menyelundupkan sesi ketika finalisasi rapor sedang berjalan", async () => {
+    await kembalikanRaporDraftA6();
+    const klien = await poolPemilik().connect();
+    try {
+      await klien.query("BEGIN");
+      await klien.query(
+        `SELECT id FROM rapor WHERE kelas_ref = $1 AND periode_ref = $2 FOR UPDATE`,
+        [A6.kelas, A6.periode],
+      );
+      const permintaan = buatSesi("2026-08-11", []);
+      expect(await selesaiDalam(permintaan, 100)).toBe(false);
+      await klien.query(
+        `UPDATE rapor
+         SET status = 'finalized', difinalisasi_oleh = $3, difinalisasi_pada = now()
+         WHERE kelas_ref = $1 AND periode_ref = $2`,
+        [A6.kelas, A6.periode, A6.guruPengampu],
+      );
+      await klien.query("COMMIT");
+      const jawab = await permintaan;
+      expect(jawab).toMatchObject({
+        status: 409,
+        badan: { kesalahan: { kode: "RAPOR_TERKUNCI" } },
+      });
+      expect(await jumlahSesi()).toBe(0);
+    } finally {
+      await klien.query("ROLLBACK").catch(() => undefined);
+      klien.release();
+      await kembalikanRaporDraftA6();
+    }
+  });
+
   it("rollback ketika penyisipan presensi tengah gagal", async () => {
     await pasangPemicuPresensiUji("INSERT");
     expect((await buatSesi("2026-08-11", [])).status).toBe(500);
@@ -278,13 +311,14 @@ describe("GET dan PUT /api/sesi/:id", () => {
     expect(siswa.status).toBe(403);
   });
 
-  it("PUT memperbarui hanya siswa yang disebut dan menjawab jumlah", async () => {
+  it("PUT memperbarui seluruh daftar siswa dan menjawab jumlah", async () => {
     const id = await idSesi(await buatSesi("2026-08-11", []));
     const jawab = await ubahSesi(id, [
       { siswa_ref: A6.siswa1, status: "izin", catatan: "Surat" },
       { siswa_ref: A6.siswa2, status: "sakit", catatan: null },
+      { siswa_ref: A6.siswa3, status: "alpa", catatan: null },
     ]);
-    expect(jawab).toEqual(expect.objectContaining({ status: 200, badan: { data: { diperbarui: 2 } } }));
+    expect(jawab).toEqual(expect.objectContaining({ status: 200, badan: { data: { diperbarui: 3 } } }));
     const status = await statusSesi(id);
     expect(status).toEqual([
       { siswa_ref: A6.siswa1, status: "izin", catatan: "Surat" },
@@ -293,7 +327,7 @@ describe("GET dan PUT /api/sesi/:id", () => {
     ]);
   });
 
-  it("PUT menolak siswa asing, duplikat, dan payload tidak strict tanpa perubahan", async () => {
+  it("PUT menolak siswa asing, duplikat, payload parsial/kosong, dan payload tidak strict tanpa perubahan", async () => {
     const id = await idSesi(await buatSesi("2026-08-11", []));
     const badan = [
       { presensi: [{ siswa_ref: A6.siswaAsing, status: "hadir", catatan: null }] },
@@ -301,6 +335,8 @@ describe("GET dan PUT /api/sesi/:id", () => {
         { siswa_ref: A6.siswa1, status: "hadir", catatan: null },
         { siswa_ref: A6.siswa1, status: "izin", catatan: null },
       ] },
+      { presensi: [{ siswa_ref: A6.siswa1, status: "hadir", catatan: null }] },
+      { presensi: [] },
       { presensi: [], tambahan: true },
       { presensi: [{ siswa_ref: "bukan-uuid", status: "hadir", catatan: null }] },
     ];
@@ -315,7 +351,11 @@ describe("GET dan PUT /api/sesi/:id", () => {
 
   it("PUT ditolak bagi Guru asing, Wali Kelas, Siswa, dan Guru saat rapor final", async () => {
     const id = await idSesi(await buatSesi("2026-08-11", []));
-    const payload = { presensi: [{ siswa_ref: A6.siswa1, status: "hadir", catatan: null }] };
+    const payload = { presensi: [
+      { siswa_ref: A6.siswa1, status: "hadir", catatan: null },
+      { siswa_ref: A6.siswa2, status: "alpa", catatan: null },
+      { siswa_ref: A6.siswa3, status: "alpa", catatan: null },
+    ] };
     for (const sesi of [sesiGuruAsing, sesiGuruWali, sesiSiswa1]) {
       const jawab = await panggilJson(app, `/api/sesi/${id}/presensi`, { metode: "PUT", sesi, badan: payload });
       expect(jawab.status).toBe(403);
@@ -335,10 +375,59 @@ describe("GET dan PUT /api/sesi/:id", () => {
     const jawab = await ubahSesi(id, [
       { siswa_ref: A6.siswa1, status: "hadir", catatan: null },
       { siswa_ref: A6.siswa2, status: "izin", catatan: null },
+      { siswa_ref: A6.siswa3, status: "alpa", catatan: null },
     ]);
     expect(jawab.status).toBe(500);
     await hapusPemicuPresensiUji();
     expect((await statusSesi(id)).every((p) => p.status === "alpa")).toBe(true);
+  });
+
+  it("PUT tidak menjawab sukses palsu ketika tidak ada baris yang terpengaruh", async () => {
+    const id = await idSesi(await buatSesi("2026-08-11", []));
+    await pasangPemicuAbaikanUji("UPDATE", "presensi");
+    const jawab = await ubahSesi(id, [
+      { siswa_ref: A6.siswa1, status: "hadir", catatan: null },
+      { siswa_ref: A6.siswa2, status: "hadir", catatan: null },
+      { siswa_ref: A6.siswa3, status: "hadir", catatan: null },
+    ]);
+    expect(jawab.status).toBe(500);
+    await hapusPemicuPresensiUji();
+    expect((await statusSesi(id)).every((p) => p.status === "alpa")).toBe(true);
+  });
+
+  it("PUT menunggu finalisasi serentak lalu tunduk pada I-22", async () => {
+    const id = await idSesi(await buatSesi("2026-08-11", []));
+    await kembalikanRaporDraftA6();
+    const klien = await poolPemilik().connect();
+    try {
+      await klien.query("BEGIN");
+      await klien.query(
+        `SELECT id FROM rapor WHERE kelas_ref = $1 AND periode_ref = $2 FOR UPDATE`,
+        [A6.kelas, A6.periode],
+      );
+      const permintaan = ubahSesi(id, [
+        { siswa_ref: A6.siswa1, status: "hadir", catatan: null },
+        { siswa_ref: A6.siswa2, status: "hadir", catatan: null },
+        { siswa_ref: A6.siswa3, status: "hadir", catatan: null },
+      ]);
+      expect(await selesaiDalam(permintaan, 100)).toBe(false);
+      await klien.query(
+        `UPDATE rapor
+         SET status = 'finalized', difinalisasi_oleh = $3, difinalisasi_pada = now()
+         WHERE kelas_ref = $1 AND periode_ref = $2`,
+        [A6.kelas, A6.periode, A6.guruPengampu],
+      );
+      await klien.query("COMMIT");
+      expect(await permintaan).toMatchObject({
+        status: 409,
+        badan: { kesalahan: { kode: "RAPOR_TERKUNCI" } },
+      });
+      expect((await statusSesi(id)).every((p) => p.status === "alpa")).toBe(true);
+    } finally {
+      await klien.query("ROLLBACK").catch(() => undefined);
+      klien.release();
+      await kembalikanRaporDraftA6();
+    }
   });
 
   it("UUID tidak sah dijawab 400 dan sesi yang tidak ada 404", async () => {
@@ -382,6 +471,45 @@ describe("DELETE /api/sesi/:id", () => {
     await hapusPemicuPresensiUji();
     expect(await jumlahSesi()).toBe(1);
     expect(await jumlahPresensi()).toBe(3);
+  });
+
+  it("DELETE tidak menjawab 204 palsu ketika tidak ada sesi yang terpengaruh", async () => {
+    const id = await idSesi(await buatSesi("2026-08-11", []));
+    await pasangPemicuAbaikanUji("DELETE", "sesi");
+    expect((await hapusSesi(id)).status).toBe(500);
+    await hapusPemicuPresensiUji();
+    expect(await jumlahSesi()).toBe(1);
+  });
+
+  it("DELETE menunggu finalisasi serentak lalu tunduk pada I-22", async () => {
+    const id = await idSesi(await buatSesi("2026-08-11", []));
+    await kembalikanRaporDraftA6();
+    const klien = await poolPemilik().connect();
+    try {
+      await klien.query("BEGIN");
+      await klien.query(
+        `SELECT id FROM rapor WHERE kelas_ref = $1 AND periode_ref = $2 FOR UPDATE`,
+        [A6.kelas, A6.periode],
+      );
+      const permintaan = hapusSesi(id);
+      expect(await selesaiDalam(permintaan, 100)).toBe(false);
+      await klien.query(
+        `UPDATE rapor
+         SET status = 'finalized', difinalisasi_oleh = $3, difinalisasi_pada = now()
+         WHERE kelas_ref = $1 AND periode_ref = $2`,
+        [A6.kelas, A6.periode, A6.guruPengampu],
+      );
+      await klien.query("COMMIT");
+      expect(await permintaan).toMatchObject({
+        status: 409,
+        badan: { kesalahan: { kode: "RAPOR_TERKUNCI" } },
+      });
+      expect(await jumlahSesi()).toBe(1);
+    } finally {
+      await klien.query("ROLLBACK").catch(() => undefined);
+      klien.release();
+      await kembalikanRaporDraftA6();
+    }
   });
 });
 
@@ -462,6 +590,18 @@ describe("GET /api/saya/presensi", () => {
     expect(JSON.stringify(jawab.badan)).not.toContain(A6.siswa2);
   });
 
+  it("memilih kelas pada periode aktif, bukan keanggotaan lama", async () => {
+    await pasangKeanggotaanLamaSiswa1();
+    const jawab = await panggilJson(app, "/api/saya/presensi", { sesi: sesiSiswa1 });
+    expect(jawab.status).toBe(200);
+    expect(jawab.badan).toMatchObject({
+      data: {
+        periode_nama: "a6-2026/2027 Ganjil",
+        mapel: [{ mapel_nama: "Biologi A6" }],
+      },
+    });
+  });
+
   it("izin dan sakit dihitung hadir; penyebut tetap seluruh sesi", async () => {
     await buatTigaSesi();
     const jawab = await panggilJson(app, "/api/saya/presensi", { sesi: await masukSebagai(app, "a6-siswa-2") });
@@ -494,6 +634,13 @@ type BarisMasukan = { siswa_ref: string; status: string; catatan: string | null 
 
 function dataDari<T>(jawab: { badan: unknown }): T {
   return (jawab.badan as { data: T }).data;
+}
+
+async function selesaiDalam(promise: Promise<unknown>, milidetik: number): Promise<boolean> {
+  return Promise.race([
+    promise.then(() => true),
+    new Promise<false>((resolve) => setTimeout(() => resolve(false), milidetik)),
+  ]);
 }
 
 function buatSesi(tanggal: string, presensi: BarisMasukan[], sesi = sesiGuruPengampu) {
@@ -581,5 +728,65 @@ async function pasangPemicuPresensiUji(operasi: "INSERT" | "UPDATE" | "DELETE"):
 
 async function hapusPemicuPresensiUji(): Promise<void> {
   await poolPemilik().query(`DROP TRIGGER IF EXISTS uji_a6_pemicu_presensi ON presensi`);
+  await poolPemilik().query(`DROP TRIGGER IF EXISTS uji_a6_abaikan_presensi ON presensi`);
+  await poolPemilik().query(`DROP TRIGGER IF EXISTS uji_a6_abaikan_sesi ON sesi`);
   await poolPemilik().query(`DROP FUNCTION IF EXISTS uji_a6_gagal_presensi()`);
+  await poolPemilik().query(`DROP FUNCTION IF EXISTS uji_a6_abaikan_baris()`);
+}
+
+async function pasangPemicuAbaikanUji(
+  operasi: "UPDATE" | "DELETE",
+  tabel: "presensi" | "sesi",
+): Promise<void> {
+  await poolPemilik().query(`CREATE OR REPLACE FUNCTION uji_a6_abaikan_baris()
+    RETURNS trigger LANGUAGE plpgsql AS $$
+    BEGIN
+      RETURN NULL;
+    END;
+    $$`);
+  await poolPemilik().query(`CREATE TRIGGER uji_a6_abaikan_${tabel}
+    BEFORE ${operasi} ON ${tabel}
+    FOR EACH ROW EXECUTE FUNCTION uji_a6_abaikan_baris()`);
+}
+
+async function pasangKeanggotaanLamaSiswa1(): Promise<void> {
+  const pool = poolPemilik();
+  await pool.query(`DELETE FROM kelas_siswa WHERE kelas_ref = $1 AND siswa_ref = $2`, [
+    A6.kelas,
+    A6.siswa1,
+  ]);
+  await pool.query(
+    `INSERT INTO tahun_ajaran (id, nama, tgl_mulai, tgl_selesai, aktif)
+     VALUES ('a6000000-0000-4000-8000-000000000131', 'a6-2025/2026', '2025-07-01', '2026-06-30', false)
+     ON CONFLICT DO NOTHING`,
+  );
+  await pool.query(
+    `INSERT INTO periode (id, tahun_ajaran_ref, semester, tgl_mulai, tgl_selesai, aktif)
+     VALUES ('a6000000-0000-4000-8000-000000000141', 'a6000000-0000-4000-8000-000000000131', 'ganjil', '2025-07-01', '2025-12-31', false)
+     ON CONFLICT DO NOTHING`,
+  );
+  await pool.query(
+    `INSERT INTO kelas (id, periode_ref, nama, tingkat, wali_kelas_ref)
+     VALUES ('a6000000-0000-4000-8000-000000000151', 'a6000000-0000-4000-8000-000000000141', 'a6-X-lama', 'X', '${A6.guruWali}')
+     ON CONFLICT DO NOTHING`,
+  );
+  await pool.query(
+    `INSERT INTO kelas_siswa (kelas_ref, siswa_ref, periode_ref) VALUES
+      ('a6000000-0000-4000-8000-000000000151', '${A6.siswa1}', 'a6000000-0000-4000-8000-000000000141'),
+      ('${A6.kelas}', '${A6.siswa1}', '${A6.periode}')
+     ON CONFLICT DO NOTHING`,
+  );
+}
+
+async function hapusKeanggotaanLamaSiswa1(): Promise<void> {
+  const pool = poolPemilik();
+  await pool.query(`DELETE FROM kelas_siswa WHERE kelas_ref = 'a6000000-0000-4000-8000-000000000151'`);
+  await pool.query(`DELETE FROM kelas WHERE id = 'a6000000-0000-4000-8000-000000000151'`);
+  await pool.query(`DELETE FROM periode WHERE id = 'a6000000-0000-4000-8000-000000000141'`);
+  await pool.query(`DELETE FROM tahun_ajaran WHERE id = 'a6000000-0000-4000-8000-000000000131'`);
+  await pool.query(
+    `INSERT INTO kelas_siswa (kelas_ref, siswa_ref, periode_ref)
+     VALUES ($1, $2, $3) ON CONFLICT DO NOTHING`,
+    [A6.kelas, A6.siswa1, A6.periode],
+  );
 }

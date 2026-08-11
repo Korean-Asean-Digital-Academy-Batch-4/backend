@@ -10,8 +10,8 @@ import {
   simpanNilai,
   cariKonteksPenugasan,
 } from "../db/pencatatan/nilai.js";
-import { kelas, kelasSiswa } from "../db/skema/periode.js";
-import { eq, sql } from "drizzle-orm";
+import { kelas, kelasSiswa, periode } from "../db/skema/periode.js";
+import { and, desc, eq, sql } from "drizzle-orm";
 import { KODE, kirimData, kirimKesalahan } from "./amplop.js";
 import { bungkus } from "./bungkus.js";
 import { wajibMasuk } from "./middleware-sesi.js";
@@ -30,9 +30,15 @@ const nilaiAngka = z
   .number()
   .min(0)
   .max(100)
-  .refine((n) => Number.isFinite(n) && Math.round(n * 100) === n * 100, {
-    message: "Nilai menerima paling banyak dua desimal.",
-  });
+  .refine(
+    (n) => {
+      const dalamSen = n * 100;
+      return Number.isFinite(n) && Math.abs(Math.round(dalamSen) - dalamSen) < 1e-9;
+    },
+    {
+      message: "Nilai menerima paling banyak dua desimal.",
+    },
+  );
 
 const barisNilaiSkema = z
   .object({
@@ -98,7 +104,24 @@ export function rutaNilai(deps: Pick<DependensiApp, "pool" | "db">): Router {
         kirimKesalahan(res, 404, KODE.tidakDitemukan, hasil.pesan);
         return;
       }
-      kirimData(res, 200, hasil.data);
+      kirimData(res, 200, {
+        penugasan: {
+          id: hasil.data.penugasan.id,
+          kelas_nama: hasil.data.penugasan.kelasNama,
+          mapel_nama: hasil.data.penugasan.mapelNama,
+          kkm: hasil.data.penugasan.kkm,
+        },
+        komponen: hasil.data.komponen,
+        siswa: hasil.data.siswa.map((item) => ({
+          siswa_ref: item.siswaRef,
+          nama: item.nama,
+        })),
+        nilai: hasil.data.nilai.map((item) => ({
+          siswa_ref: item.siswaRef,
+          komponen_ref: item.komponenRef,
+          nilai: item.nilai,
+        })),
+      });
     }),
   );
 
@@ -219,7 +242,9 @@ export function rutaNilai(deps: Pick<DependensiApp, "pool" | "db">): Router {
         .select({ kelasRef: kelasSiswa.kelasRef })
         .from(kelasSiswa)
         .innerJoin(kelas, eq(kelas.id, kelasSiswa.kelasRef))
-        .where(eq(kelasSiswa.siswaRef, penuntut.penggunaRef))
+        .innerJoin(periode, eq(periode.id, kelas.periodeRef))
+        .where(and(eq(kelasSiswa.siswaRef, penuntut.penggunaRef), eq(periode.aktif, true)))
+        .orderBy(desc(periode.tglMulai), desc(periode.id), desc(kelas.id))
         .limit(1);
       if (!keanggotaan) {
         kirimData(res, 200, { periode_nama: null, mapel: [] });

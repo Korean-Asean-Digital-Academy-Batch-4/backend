@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { eq, sql } from "drizzle-orm";
+import { and, asc, desc, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 
 import type { DependensiApp } from "../dependensi-app.js";
@@ -15,7 +15,7 @@ import {
   presensiSiswaPerKelas,
   ubahPresensiSesi,
 } from "../db/pencatatan/presensi.js";
-import { kelas, kelasSiswa } from "../db/skema/periode.js";
+import { kelas, kelasSiswa, periode } from "../db/skema/periode.js";
 import { STATUS_PRESENSI } from "../domain/presensi.js";
 import { KODE, kirimData, kirimKesalahan } from "./amplop.js";
 import { bungkus } from "./bungkus.js";
@@ -372,7 +372,14 @@ export function rutaPresensi(deps: Pick<DependensiApp, "pool" | "db">): Router {
         .select({ kelasRef: kelasSiswa.kelasRef })
         .from(kelasSiswa)
         .innerJoin(kelas, eq(kelas.id, kelasSiswa.kelasRef))
-        .where(eq(kelasSiswa.siswaRef, penuntut.penggunaRef))
+        .innerJoin(periode, eq(periode.id, kelas.periodeRef))
+        .where(
+          and(eq(kelasSiswa.siswaRef, penuntut.penggunaRef), eq(periode.aktif, true)),
+        )
+        // Skema membatasi satu periode aktif per tahun ajaran, tetapi dapat ada
+        // lebih dari satu tahun aktif akibat data administrasi. Tetap pilih
+        // secara eksplisit dan stabil, bukan bergantung pada urutan heap.
+        .orderBy(desc(periode.tglMulai), asc(periode.id), asc(kelas.id))
         .limit(1);
       if (!keanggotaan) {
         kirimData(res, 200, { periode_nama: null, mapel: [] });

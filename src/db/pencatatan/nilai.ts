@@ -224,18 +224,19 @@ export async function simpanNilai(
   try {
     return await db.transaction(async (tx) => {
       // Rapor kelas pada periode ini — I-22, AC-14. Guru ditolak 409;
-      // Administrator dilanjutkan (API.md §6.2). SELECT FOR SHARE menahan
-      // balapan dengan finalisasi sampai COMMIT.
-      const [raporTerkunci] = await tx
-        .select({ id: rapor.id })
+      // Administrator dilanjutkan (API.md §6.2). Semua baris, termasuk yang
+      // masih draft, dikunci agar finalisasi terserialisasi sesudah COMMIT.
+      const barisRapor = await tx
+        .select({ id: rapor.id, status: rapor.status })
         .from(rapor)
         .where(
           sql`${rapor.kelasRef} = ${konteks.kelasRef}
-            AND ${rapor.periodeRef} = ${konteks.periodeRef}
-            AND ${rapor.status} IN ('finalized', 'distributed')`,
+            AND ${rapor.periodeRef} = ${konteks.periodeRef}`,
         )
-        .limit(1)
-        .for("share");
+        .for("update");
+      const raporTerkunci = barisRapor.some(
+        (item) => item.status === "finalized" || item.status === "distributed",
+      );
       if (raporTerkunci && input.penuntut.peran === "guru") {
         return {
           berhasil: false,
