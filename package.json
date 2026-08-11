@@ -18,6 +18,8 @@
     "test:db": "vitest run --config vitest.config.db.ts",
     "coverage": "npm run coverage:global",
     "db:generate": "drizzle-kit generate",
+    "db:migrate": "tsx --env-file-if-exists=.env src/entry/migrasi.ts",
+    "db:siapkan-role": "tsx --env-file-if-exists=.env src/entry/siapkan-role.ts",
     "admin:create": "tsx src/entry/admin.ts",
     "seed:admin": "tsx src/entry/seed-admin.ts",
     "ukur:render": "tsx scripts/ukur-render-rapor.ts",

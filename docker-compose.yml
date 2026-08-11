@@ -19,7 +19,11 @@ services:
     ports:
       - "8080:8080"
     environment:
-      DATABASE_URL: postgres://edutrack_owner:lokal@db:5432/edutrack
+      # Aplikasi menyambung sebagai app_rw, BUKAN edutrack_owner —
+      # ARCHITECTURE.md Pasal 8. Jalankan `npm run db:siapkan-role` sekali
+      # supaya kata sandi kedua role ini ada di PostgreSQL.
+      DATABASE_URL: postgres://app_rw:lokal-rw@db:5432/edutrack
+      DATABASE_URL_RO: postgres://app_ro:lokal-ro@db:5432/edutrack
       PORT: "8080"
       # Di luar Lambda pool boleh lebih dari satu — ARCHITECTURE.md Pasal 13.
       DB_POOL_MAX: "10"

@@ -157,6 +157,8 @@ const KUNCI_PENERAPAN = 4_072_026;
  * @returns nama berkas yang baru diterapkan pada pemanggilan ini
  */
 export async function terapkanMigrasi(pool: Pool, direktori: string): Promise<string[]> {
+  wajibMuatDuaKoneksi(pool);
+
   const berkas = await daftarBerkasMigrasi(direktori);
   await pool.query(SIAPKAN_CATATAN);
 
@@ -167,6 +169,29 @@ export async function terapkanMigrasi(pool: Pool, direktori: string): Promise<st
   } finally {
     await penjaga.query(`SELECT pg_advisory_unlock($1)`, [KUNCI_PENERAPAN]).catch(() => undefined);
     penjaga.release();
+  }
+}
+
+/**
+ * Menolak pool yang terlalu sempit **sebelum** penerapan dimulai.
+ *
+ * Penerapan memegang satu koneksi sebagai penjaga advisory lock sepanjang
+ * prosesnya, lalu menjalankan seluruh migrasinya lewat koneksi lain dari pool
+ * yang sama. Pada `max: 1` keduanya berebut satu-satunya koneksi dan prosesnya
+ * **menggantung tanpa pesan apa pun** — bukan gagal, hanya diam selamanya.
+ *
+ * Ini mudah terjadi karena `DB_POOL_MAX` memang bernilai 1 secara bawaan,
+ * mengikuti disiplin pool Lambda ([ARCHITECTURE.md §6]). Diperiksa di sini
+ * supaya kekeliruannya muncul sebagai kalimat, bukan sebagai perintah yang
+ * tidak pernah selesai.
+ */
+function wajibMuatDuaKoneksi(pool: Pool): void {
+  const maksimum = (pool as Pool & { options?: { max?: number } }).options?.max;
+  if (typeof maksimum === "number" && maksimum < 2) {
+    throw new Error(
+      `Penerapan migrasi menuntut pool minimal 2 koneksi, diterima max: ${maksimum}. ` +
+        `Satu koneksi dipegang penjaga advisory lock, satu lagi menjalankan migrasinya.`,
+    );
   }
 }
 
