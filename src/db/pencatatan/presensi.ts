@@ -1,4 +1,4 @@
-import { asc, eq, sql } from "drizzle-orm";
+import { and, asc, eq, sql } from "drizzle-orm";
 
 import type { BasisData } from "../drizzle.js";
 import { hitungPersentaseKehadiran, type StatusPresensi } from "../../domain/presensi.js";
@@ -467,30 +467,23 @@ export async function presensiSiswaPerKelas(
 ): Promise<
   readonly Readonly<{ mapel_nama: string; ada_sesi: boolean; persen: number | null }>[]
 > {
-  const penugasanKelas = await db
-    .select({ id: penugasan.id, mapelNama: mapel.nama })
+  const baris = await db
+    .select({
+      penugasanRef: penugasan.id,
+      mapelNama: mapel.nama,
+      status: presensi.status,
+    })
     .from(penugasan)
     .innerJoin(mapel, eq(mapel.id, penugasan.mapelRef))
+    .leftJoin(sesi, eq(sesi.penugasanRef, penugasan.id))
+    .leftJoin(
+      presensi,
+      and(eq(presensi.sesiRef, sesi.id), eq(presensi.siswaRef, siswaRef)),
+    )
     .where(eq(penugasan.kelasRef, kelasRef))
-    .orderBy(asc(mapel.kode), asc(penugasan.id));
+    .orderBy(asc(mapel.kode), asc(penugasan.id), asc(sesi.tanggal), asc(sesi.id));
 
-  const hasil = [];
-  for (const satu of penugasanKelas) {
-    const baris = await db
-      .select({ status: presensi.status })
-      .from(presensi)
-      .innerJoin(sesi, eq(sesi.id, presensi.sesiRef))
-      .where(sql`${sesi.penugasanRef} = ${satu.id} AND ${presensi.siswaRef} = ${siswaRef}`);
-    const kehadiran = hitungPersentaseKehadiran(baris.map((b) => b.status as StatusPresensi));
-    hasil.push(
-      Object.freeze(
-        kehadiran.adaSesi
-          ? { mapel_nama: satu.mapelNama, ada_sesi: true, persen: kehadiran.persen }
-          : { mapel_nama: satu.mapelNama, ada_sesi: false, persen: null },
-      ),
-    );
-  }
-  return Object.freeze(hasil);
+  return bentukRingkasanMapel(baris);
 }
 
 /** Ringkasan seluruh siswa satu kelas per mapel — GET /api/kelas/:id/presensi. */
@@ -499,12 +492,79 @@ export async function presensiSatuKelas(
   kelasRef: string,
 ): Promise<readonly RingkasanPresensiSiswa[]> {
   const anggota = await daftarSiswaKelasPresensi(db, kelasRef);
-  const hasil: RingkasanPresensiSiswa[] = [];
-  for (const satu of anggota) {
-    const perMapel = await presensiSiswaPerKelas(db, kelasRef, satu.siswa_ref);
-    hasil.push(Object.freeze({ siswa_ref: satu.siswa_ref, nama: satu.nama, per_mapel: perMapel }));
+  if (anggota.length === 0) return Object.freeze([]);
+
+  // Satu kueri datar untuk seluruh siswa dan sesi. Jumlah kueri tetap dua
+  // berapa pun jumlah anggota kelas atau sesi (tidak ada N+1).
+  const baris = await db
+    .select({
+      siswaRef: kelasSiswa.siswaRef,
+      penugasanRef: penugasan.id,
+      mapelNama: mapel.nama,
+      status: presensi.status,
+    })
+    .from(kelasSiswa)
+    .innerJoin(penugasan, eq(penugasan.kelasRef, kelasSiswa.kelasRef))
+    .innerJoin(mapel, eq(mapel.id, penugasan.mapelRef))
+    .leftJoin(sesi, eq(sesi.penugasanRef, penugasan.id))
+    .leftJoin(
+      presensi,
+      and(eq(presensi.sesiRef, sesi.id), eq(presensi.siswaRef, kelasSiswa.siswaRef)),
+    )
+    .where(eq(kelasSiswa.kelasRef, kelasRef))
+    .orderBy(
+      asc(kelasSiswa.siswaRef),
+      asc(mapel.kode),
+      asc(penugasan.id),
+      asc(sesi.tanggal),
+      asc(sesi.id),
+    );
+
+  const perSiswa = new Map<string, typeof baris>();
+  for (const satu of baris) {
+    const terkumpul = perSiswa.get(satu.siswaRef) ?? [];
+    terkumpul.push(satu);
+    perSiswa.set(satu.siswaRef, terkumpul);
   }
-  return Object.freeze(hasil);
+  return Object.freeze(
+    anggota.map((satu) =>
+      Object.freeze({
+        siswa_ref: satu.siswa_ref,
+        nama: satu.nama,
+        per_mapel: bentukRingkasanMapel(perSiswa.get(satu.siswa_ref) ?? []),
+      }),
+    ),
+  );
+}
+
+type BarisMapelPresensi = Readonly<{
+  penugasanRef: string;
+  mapelNama: string;
+  status: string | null;
+}>;
+
+function bentukRingkasanMapel(
+  baris: readonly BarisMapelPresensi[],
+): readonly Readonly<{ mapel_nama: string; ada_sesi: boolean; persen: number | null }>[] {
+  const perPenugasan = new Map<string, { mapelNama: string; status: StatusPresensi[] }>();
+  for (const satu of baris) {
+    const ringkasan = perPenugasan.get(satu.penugasanRef) ?? {
+      mapelNama: satu.mapelNama,
+      status: [],
+    };
+    if (satu.status !== null) ringkasan.status.push(satu.status as StatusPresensi);
+    perPenugasan.set(satu.penugasanRef, ringkasan);
+  }
+  return Object.freeze(
+    [...perPenugasan.values()].map((satu) => {
+      const kehadiran = hitungPersentaseKehadiran(satu.status);
+      return Object.freeze(
+        kehadiran.adaSesi
+          ? { mapel_nama: satu.mapelNama, ada_sesi: true, persen: kehadiran.persen }
+          : { mapel_nama: satu.mapelNama, ada_sesi: false, persen: null },
+      );
+    }),
+  );
 }
 
 /** Nama periode kelas — amplop GET /api/saya/presensi. */
