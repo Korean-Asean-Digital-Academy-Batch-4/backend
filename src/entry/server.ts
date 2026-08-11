@@ -1,5 +1,7 @@
 import { kataSandiArgon2id } from "../adapters/local/kata-sandi.js";
 import { berkasAdministrasiLokal } from "../adapters/local/berkas-administrasi/index.js";
+import { penyimpananBerkasLokal } from "../adapters/local/penyimpanan-berkas.js";
+import { raporBerkasLokal } from "../adapters/local/rapor-berkas/index.js";
 import { buatApp } from "../app.js";
 import { bacaKonfigurasi } from "../config.js";
 import { buatBasisData } from "../db/drizzle.js";
@@ -14,6 +16,8 @@ const app = buatApp({
   db: buatBasisData(pool),
   kataSandi: kataSandiArgon2id(),
   berkasAdministrasi: berkasAdministrasiLokal(),
+  penyimpanan: penyimpananBerkasLokal(konfigurasi.BERKAS_AKAR),
+  raporBerkas: raporBerkasLokal(),
   sekarang: () => new Date(),
 });
 

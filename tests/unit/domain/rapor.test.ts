@@ -1,9 +1,13 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  KEHADIRAN_TANPA_SESI,
   STATUS_RAPOR,
   bolehDiubahGuru,
+  pesanMapelBelumLengkap,
+  periksaKelengkapanRapor,
   periksaTransisi,
+  susunRaporMapel,
   terlihatSiswa,
   urutanStatus,
   type StatusRapor,
@@ -86,5 +90,139 @@ describe("himpunan status tertutup", () => {
     const diharapkan: StatusRapor[] = ["draft", "finalized", "distributed"];
 
     expect(STATUS_RAPOR).toEqual(diharapkan);
+  });
+});
+
+describe("AC-07 pesan mata pelajaran belum lengkap", () => {
+  it("menyusun teksnya kata demi kata sesuai AC-07", () => {
+    expect(pesanMapelBelumLengkap("Matematika")).toBe(
+      "Data Mapel Matematika belum ada, tolong hubungi guru yang bertanggung jawab.",
+    );
+  });
+});
+
+describe("I-20 finalisasi hanya bila seluruh mata pelajaran lengkap", () => {
+  it("meloloskan kelas yang seluruh mata pelajarannya lengkap", () => {
+    expect(periksaKelengkapanRapor([])).toEqual({ lengkap: true });
+  });
+
+  it("menolak beserta satu rincian per mata pelajaran yang belum lengkap", () => {
+    const hasil = periksaKelengkapanRapor(["Matematika", "Fisika"]);
+
+    expect(hasil.lengkap).toBe(false);
+    if (hasil.lengkap) return;
+    expect(hasil.pesan).toBe(
+      "Rapor belum dapat difinalisasi karena 2 mata pelajaran belum lengkap.",
+    );
+    expect(hasil.rincian).toEqual([
+      {
+        mapelNama: "Matematika",
+        pesan: "Data Mapel Matematika belum ada, tolong hubungi guru yang bertanggung jawab.",
+      },
+      {
+        mapelNama: "Fisika",
+        pesan: "Data Mapel Fisika belum ada, tolong hubungi guru yang bertanggung jawab.",
+      },
+    ]);
+  });
+
+  it("menyebut jumlahnya apa adanya ketika hanya satu", () => {
+    const hasil = periksaKelengkapanRapor(["Biologi"]);
+
+    expect(hasil.lengkap).toBe(false);
+    if (hasil.lengkap) return;
+    expect(hasil.pesan).toBe(
+      "Rapor belum dapat difinalisasi karena 1 mata pelajaran belum lengkap.",
+    );
+  });
+});
+
+describe("susunRaporMapel — salinan beku RFC-001 sec 5.5", () => {
+  const komponen = [
+    { kode: "TGS", nama: "Tugas", bobot: 40 },
+    { kode: "UTS", nama: "Ujian Tengah Semester", bobot: 60 },
+  ] as const;
+
+  it("membekukan kode, nama, bobot, dan nilai setiap komponen", () => {
+    const hasil = susunRaporMapel({
+      komponen,
+      nilai: [
+        { kode: "TGS", nilai: 80 },
+        { kode: "UTS", nilai: 90 },
+      ],
+      statusPresensi: ["hadir", "izin", "sakit", "alpa"],
+    });
+
+    expect(hasil.sah).toBe(true);
+    if (!hasil.sah) return;
+    expect(hasil.baris.snapshotKomponen).toEqual([
+      { kode: "TGS", nama: "Tugas", bobot: 40, nilai: 80 },
+      { kode: "UTS", nama: "Ujian Tengah Semester", bobot: 60, nilai: 90 },
+    ]);
+  });
+
+  it("memakai rumus nilai akhir domain, bukan rumus baru", () => {
+    const hasil = susunRaporMapel({
+      komponen,
+      nilai: [
+        { kode: "TGS", nilai: 80 },
+        { kode: "UTS", nilai: 90 },
+      ],
+      statusPresensi: ["hadir"],
+    });
+
+    expect(hasil.sah).toBe(true);
+    if (!hasil.sah) return;
+    expect(hasil.baris.nilaiAkhir).toBe(86);
+  });
+
+  it("menghitung kehadiran dengan Izin dan Sakit terhitung hadir — I-17", () => {
+    const hasil = susunRaporMapel({
+      komponen,
+      nilai: [
+        { kode: "TGS", nilai: 80 },
+        { kode: "UTS", nilai: 90 },
+      ],
+      statusPresensi: ["hadir", "izin", "sakit", "alpa"],
+    });
+
+    expect(hasil.sah).toBe(true);
+    if (!hasil.sah) return;
+    expect(hasil.baris.kehadiranPersen).toBe(75);
+  });
+
+  it("menyatakan kehadiran penuh ketika belum ada satu pun sesi dibuka", () => {
+    const hasil = susunRaporMapel({
+      komponen,
+      nilai: [
+        { kode: "TGS", nilai: 80 },
+        { kode: "UTS", nilai: 90 },
+      ],
+      statusPresensi: [],
+    });
+
+    expect(hasil.sah).toBe(true);
+    if (!hasil.sah) return;
+    expect(hasil.baris.kehadiranPersen).toBe(KEHADIRAN_TANPA_SESI);
+  });
+
+  it("menolak membeku selama masih ada komponen yang belum bernilai — I-12", () => {
+    const hasil = susunRaporMapel({
+      komponen,
+      nilai: [{ kode: "TGS", nilai: 80 }],
+      statusPresensi: ["hadir"],
+    });
+
+    expect(hasil).toEqual({ sah: false, sebab: "komponen_belum_lengkap" });
+  });
+
+  it("menolak membeku ketika jumlah bobot bukan seratus — I-10", () => {
+    const hasil = susunRaporMapel({
+      komponen: [{ kode: "TGS", nama: "Tugas", bobot: 40 }],
+      nilai: [{ kode: "TGS", nilai: 80 }],
+      statusPresensi: ["hadir"],
+    });
+
+    expect(hasil).toEqual({ sah: false, sebab: "bobot_tidak_seratus" });
   });
 });
