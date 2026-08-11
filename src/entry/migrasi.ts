@@ -1,23 +1,29 @@
 import { Pool } from "pg";
 
-import { bacaKonfigurasiMigrasi } from "../config.js";
+import { rakitKonfigurasiMigrasi } from "../config.js";
 import { DIREKTORI_MIGRASI, terapkanMigrasi } from "../db/migrasi.js";
+import { pilihLingkunganMigrasi } from "./lingkungan.js";
 
 /**
  * Menerapkan migrasi yang belum pernah dijalankan.
  *
  *     npm run db:migrate
  *
- * Menyambung memakai `DATABASE_URL_MIGRASI`, yaitu kredensial `edutrack_owner`
- * — satu-satunya role yang boleh DDL. Kredensial itu **tidak pernah dibaca
- * proses yang melayani request**: `bacaKonfigurasi()` tidak mengenalnya sama
- * sekali ([ARCHITECTURE.md §8], [DEPLOYMENT.md §9.5]).
+ * Menyambung memakai kredensial `edutrack_owner` — satu-satunya role yang boleh
+ * DDL. Kredensial itu **tidak pernah dibaca proses yang melayani request**:
+ * `rakitKonfigurasi()` tidak pernah meminta peran `owner` kepada port rahasia,
+ * dan di AWS pembatasan yang sama ditegakkan IAM ([ARCHITECTURE.md §8],
+ * [DEPLOYMENT.md §9.5]).
+ *
+ * Sumbernya berbeda antar lingkungan dan itu tidak terlihat dari sini: di lokal
+ * `DATABASE_URL_MIGRASI`, di AWS rahasia terkelola RDS yang ARN-nya diteruskan
+ * lewat `RAHASIA_OWNER` (CK-D-06).
  *
  * Pemanggilan berulang tanpa migrasi baru tidak melakukan apa pun, sehingga
  * perintah ini aman dijalankan pada setiap rilis ([DEPLOYMENT.md §3.3]).
  */
 
-const konfigurasi = bacaKonfigurasiMigrasi();
+const konfigurasi = await rakitKonfigurasiMigrasi(process.env, pilihLingkunganMigrasi().rahasia);
 // Dua koneksi, bukan satu: penerapan memegang satu sebagai penjaga advisory
 // lock dan menjalankan migrasinya lewat yang lain. `DB_POOL_MAX` sengaja tidak
 // dipakai di sini — bawaannya 1, dan itu membuat penerapan menggantung.

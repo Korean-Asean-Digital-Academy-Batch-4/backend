@@ -2,7 +2,11 @@ import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { dirname, join, resolve, sep } from "node:path";
 import { pathToFileURL } from "node:url";
 
-import type { PenyimpananBerkas, TautanBerkas } from "../../ports/penyimpanan-berkas.js";
+import {
+  pastikanKunciSah,
+  type PenyimpananBerkas,
+  type TautanBerkas,
+} from "../../ports/penyimpanan-berkas.js";
 
 /**
  * Penyimpanan berkas di atas disk lokal.
@@ -19,15 +23,6 @@ import type { PenyimpananBerkas, TautanBerkas } from "../../ports/penyimpanan-be
  * adapter S3 terpasang.
  */
 
-/**
- * Kunci yang diterima: segmen `A-Z a-z 0-9 _ - .` yang dipisahkan `/`.
- *
- * Sengaja dibuat sempit alih-alih menyaring `..` satu per satu. Daftar larangan
- * selalu tertinggal dari cara baru menuliskan hal yang sama — penyandian persen,
- * pemisah Windows, byte nol — sedangkan daftar izin tidak.
- */
-const POLA_KUNCI = /^[A-Za-z0-9_-]+(\.[A-Za-z0-9_-]+)*(\/[A-Za-z0-9_-]+(\.[A-Za-z0-9_-]+)*)*$/;
-
 const KODE_TIDAK_ADA = "ENOENT";
 
 export function penyimpananBerkasLokal(
@@ -37,11 +32,8 @@ export function penyimpananBerkasLokal(
   const akarMutlak = resolve(akar);
 
   function jalanBerkas(kunci: string): string {
-    if (!POLA_KUNCI.test(kunci) || kunci.split("/").includes("..")) {
-      throw new Error(`Kunci berkas tidak sah: ${JSON.stringify(kunci)}`);
-    }
-    const jalan = resolve(join(akarMutlak, kunci));
-    // Lapis kedua. Pola di atas sudah menutup jalan keluar, tetapi pemeriksaan
+    const jalan = resolve(join(akarMutlak, pastikanKunciSah(kunci)));
+    // Lapis kedua. Pola pada port sudah menutup jalan keluar, tetapi pemeriksaan
     // hasil resolusi tidak bergantung pada ketepatan pola mana pun.
     if (jalan !== akarMutlak && !jalan.startsWith(akarMutlak + sep)) {
       throw new Error(`Kunci berkas tidak sah: ${JSON.stringify(kunci)}`);

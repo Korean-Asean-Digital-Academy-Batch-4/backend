@@ -1,18 +1,26 @@
+import { Pool } from "pg";
+
 import { kataSandiArgon2id } from "../adapters/local/kata-sandi.js";
 import { berkasAdministrasiLokal } from "../adapters/local/berkas-administrasi/index.js";
-import { penyimpananBerkasLokal } from "../adapters/local/penyimpanan-berkas.js";
 import { raporBerkasLokal } from "../adapters/local/rapor-berkas/index.js";
 import { penasihatOpenAiCompatible } from "../adapters/openai-compatible/index.js";
 import { buatApp } from "../app.js";
-import { bacaKonfigurasi } from "../config.js";
+import { rakitKonfigurasi } from "../config.js";
 import { buatBasisData } from "../db/drizzle.js";
-import { Pool } from "pg";
-
 import { buatPool } from "../db/index.js";
+import { pilihLingkungan } from "./lingkungan.js";
 
 // Satu-satunya entry point. Tidak ada entry terpisah untuk AWS, karena AWS
 // menjalankan container yang sama dengan on-prem — ARCHITECTURE.md sec 5.1.
-const konfigurasi = bacaKonfigurasi();
+// Yang berbeda antar lingkungan hanya adapter yang dipilih di bawah, dan
+// pemilihannya ditentukan satu variabel — entry/lingkungan.ts.
+const lingkungan = pilihLingkungan();
+
+// Rahasia dibaca SEKALI di sini, bukan pada setiap request — Techstack.md sec 7
+// butir 3. Di Lambda pembacaannya jatuh pada cold start, sehingga request
+// berikutnya pada instance yang sama tidak memanggil Secrets Manager sama sekali.
+const konfigurasi = await rakitKonfigurasi(process.env, lingkungan.rahasia);
+
 const pool = buatPool(konfigurasi);
 // Pool kedua, bukan koneksi kedua pada pool yang sama: rolenya berbeda, dan
 // perbedaan itulah yang menegakkan I-23 — ARCHITECTURE.md Pasal 8.
@@ -26,7 +34,7 @@ const app = buatApp({
   db: buatBasisData(pool),
   kataSandi: kataSandiArgon2id(),
   berkasAdministrasi: berkasAdministrasiLokal(),
-  penyimpanan: penyimpananBerkasLokal(konfigurasi.BERKAS_AKAR),
+  penyimpanan: lingkungan.penyimpanan,
   raporBerkas: raporBerkasLokal(),
   penasihatAi: penasihatOpenAiCompatible({
     baseUrl: konfigurasi.ELICE_BASE_URL,
@@ -37,7 +45,9 @@ const app = buatApp({
 });
 
 const server = app.listen(konfigurasi.PORT, () => {
-  console.log(`edutrack-api mendengarkan di port ${konfigurasi.PORT}`);
+  console.log(
+    `edutrack-api mendengarkan di port ${konfigurasi.PORT} (lingkungan ${lingkungan.nama})`,
+  );
 });
 
 for (const sinyal of ["SIGTERM", "SIGINT"] as const) {

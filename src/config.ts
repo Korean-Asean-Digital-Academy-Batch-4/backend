@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import type { Rahasia } from "./ports/rahasia.js";
+
 /**
  * Konfigurasi proses. Dua pembaca, bukan satu — dan pemisahannya menentukan.
  *
@@ -65,4 +67,44 @@ export function bacaKonfigurasi(env: NodeJS.ProcessEnv = process.env): Konfigura
 
 export function bacaKonfigurasiMigrasi(env: NodeJS.ProcessEnv = process.env): KonfigurasiMigrasi {
   return skemaKonfigurasiMigrasi.parse(env);
+}
+
+/**
+ * Menyusun konfigurasi dari lingkungan **beserta** rahasia yang dibaca port.
+ *
+ * Ketiga nilai rahasia diambil dari `Rahasia`, bukan dari `env` — sekalipun
+ * variabel bernama sama kebetulan ada di sana. Pada lingkungan lokal keduanya
+ * memang bermuara pada tempat yang sama, tetapi jalurnya tetap satu:
+ * [ARCHITECTURE.md §12.1] menetapkan pembacaan rahasia melewati port, dan
+ * pengecualian "kecuali di lokal" adalah cara tercepat kedua jalur menyimpang.
+ *
+ * Dipanggil **sekali pada saat container menyala** ([Techstack.md §7] butir 3).
+ */
+export async function rakitKonfigurasi(
+  env: NodeJS.ProcessEnv,
+  rahasia: Rahasia,
+): Promise<Konfigurasi> {
+  const [urlRw, urlRo, kunciAi] = await Promise.all([
+    rahasia.urlBasisData("app_rw"),
+    rahasia.urlBasisData("app_ro"),
+    rahasia.kunciApiAi(),
+  ]);
+
+  return skemaKonfigurasi.parse({
+    ...env,
+    DATABASE_URL: urlRw,
+    DATABASE_URL_RO: urlRo,
+    ELICE_API_KEY: kunciAi,
+  });
+}
+
+/** Setara di atas bagi perintah migrasi. Hanya peran `owner` yang diminta. */
+export async function rakitKonfigurasiMigrasi(
+  env: NodeJS.ProcessEnv,
+  rahasia: Rahasia,
+): Promise<KonfigurasiMigrasi> {
+  return skemaKonfigurasiMigrasi.parse({
+    ...env,
+    DATABASE_URL_MIGRASI: await rahasia.urlBasisData("owner"),
+  });
 }

@@ -22,6 +22,26 @@ export type TautanBerkas = Readonly<{
  */
 export const UMUR_TAUTAN_DETIK = 5 * 60;
 
+/**
+ * Kunci yang diterima: segmen `A-Z a-z 0-9 _ - .` yang dipisahkan `/`.
+ *
+ * Sengaja dibuat sempit alih-alih menyaring `..` satu per satu. Daftar larangan
+ * selalu tertinggal dari cara baru menuliskan hal yang sama — penyandian persen,
+ * pemisah Windows, byte nol — sedangkan daftar izin tidak.
+ *
+ * Berada di port, bukan di salah satu adapter, karena bentuk kunci adalah bagian
+ * dari kontrak: berkas yang tersimpan di disk lokal harus dapat dipindahkan ke
+ * S3 tanpa satu pun nama berubah arti ([ARCHITECTURE.md §13]).
+ */
+const POLA_KUNCI = /^[A-Za-z0-9_-]+(\.[A-Za-z0-9_-]+)*(\/[A-Za-z0-9_-]+(\.[A-Za-z0-9_-]+)*)*$/;
+
+export function pastikanKunciSah(kunci: string): string {
+  if (!POLA_KUNCI.test(kunci) || kunci.split("/").includes("..")) {
+    throw new Error(`Kunci berkas tidak sah: ${JSON.stringify(kunci)}`);
+  }
+  return kunci;
+}
+
 export interface PenyimpananBerkas {
   /** Menyimpan atau menimpa satu berkas. */
   simpan(kunci: string, isi: Buffer, jenisIsi: string): Promise<void>;
