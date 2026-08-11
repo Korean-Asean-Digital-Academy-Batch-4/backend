@@ -22,6 +22,16 @@ describe("bacaKonfigurasi", () => {
     expect(() => bacaKonfigurasi({ ...LENGKAP, DATABASE_URL: undefined })).toThrow();
   });
 
+  it("menolak ELICE_BASE_URL yang contoh id endpointnya belum diganti", () => {
+    expect(() =>
+      bacaKonfigurasi({ ...LENGKAP, ELICE_BASE_URL: "https://mlapi.run/{endpoint-id}" }),
+    ).toThrow(/endpoint-id/);
+  });
+
+  it("menolak ELICE_BASE_URL yang bukan URL", () => {
+    expect(() => bacaKonfigurasi({ ...LENGKAP, ELICE_BASE_URL: "mlapi.run/abc" })).toThrow();
+  });
+
   it("menolak konfigurasi tanpa kunci Elice — jalur AI menuntut kredensialnya", () => {
     expect(() => bacaKonfigurasi({ ...LENGKAP, ELICE_API_KEY: undefined })).toThrow();
   });

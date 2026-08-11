@@ -28,8 +28,23 @@ export const skemaKonfigurasi = z.object({
   // Direktori penyimpanan berkas rapor bagi adapter lokal. Penerapan AWS
   // memakai bucket S3 lewat adapter tersendiri — ARCHITECTURE.md Pasal 11.
   BERKAS_AKAR: z.string().min(1).default("./data/berkas"),
-  /** Berhenti pada id endpoint; `/v1/chat/completions` ditambahkan adapter. */
-  ELICE_BASE_URL: z.string().min(1, "ELICE_BASE_URL wajib diisi"),
+  /**
+   * Berhenti pada id endpoint; `/v1/chat/completions` ditambahkan adapter.
+   *
+   * Ditolak apabila masih memuat `{` atau `}`, yaitu ketika contoh pada
+   * `.env.example` disalin tanpa id endpointnya diganti. Tanpa pemeriksaan ini
+   * kekeliruannya baru terlihat sebagai `404 model_not_found` dari gateway —
+   * pesan yang menyesatkan, karena yang salah alamatnya, bukan nama modelnya
+   * ([payload.md §1]).
+   */
+  ELICE_BASE_URL: z
+    .string()
+    .min(1, "ELICE_BASE_URL wajib diisi")
+    .url("ELICE_BASE_URL wajib berupa URL yang sah")
+    .refine((nilai) => !/[{}]/.test(nilai), {
+      message:
+        "ELICE_BASE_URL masih memuat contoh {endpoint-id}. Ganti dengan id endpoint yang sesungguhnya.",
+    }),
   ELICE_MODEL: z.string().min(1, "ELICE_MODEL wajib diisi"),
   /** RAHASIA — Techstack.md §7. Di AWS dibaca dari SSM Parameter Store. */
   ELICE_API_KEY: z.string().min(1, "ELICE_API_KEY wajib diisi"),
