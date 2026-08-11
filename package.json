@@ -20,6 +20,7 @@
     "db:generate": "drizzle-kit generate",
     "admin:create": "tsx src/entry/admin.ts",
     "seed:admin": "tsx src/entry/seed-admin.ts",
+    "ukur:render": "tsx scripts/ukur-render-rapor.ts",
     "lint:migrations": "squawk migrations/*.sql",
     "periksa": "npm run format:check && npm run lint && npm run typecheck && npm run coverage",
     "coverage:bersihkan": "node --input-type=module -e \"import{rmSync}from'node:fs';for(const p of['coverage/unit','coverage/db'])rmSync(p,{recursive:true,force:true})\"",
@@ -36,10 +37,12 @@
     "csv-stringify": "6.8.3",
     "drizzle-orm": "^0.45.2",
     "express": "^5.1.0",
+    "pdfmake": "^0.3.11",
     "pg": "^8.13.1",
     "read-excel-file": "9.3.8",
     "write-excel-file": "4.1.1",
     "yauzl": "3.4.0",
+    "yazl": "^3.3.1",
     "zod": "^3.24.1"
   },
   "devDependencies": {
@@ -52,6 +55,7 @@
     "@types/node": "^22.10.2",
     "@types/pg": "^8.11.10",
     "@types/yauzl": "3.4.0",
+    "@types/yazl": "^3.3.1",
     "@vitest/coverage-v8": "^2.1.8",
     "drizzle-kit": "^0.31.10",
     "eslint": "^9.17.0",

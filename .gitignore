@@ -10,5 +10,8 @@ coverage/
 # Graf pengetahuan graphify — selalu dapat dibangun ulang
 graphify-out/
 
+# Berkas rapor hasil render pada penerapan lokal — turunan, bukan sumber.
+data/
+
 # Keluaran drizzle-kit generate — hanya untuk peninjauan, bukan yang dijalankan.
 .drizzle-bangkit/

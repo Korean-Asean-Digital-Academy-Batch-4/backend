@@ -1,7 +1,12 @@
+import { mkdtempSync } from "node:fs";
 import type { AddressInfo } from "node:net";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 import { kataSandiArgon2id } from "../../src/adapters/local/kata-sandi.js";
 import { berkasAdministrasiLokal } from "../../src/adapters/local/berkas-administrasi/index.js";
+import { penyimpananBerkasLokal } from "../../src/adapters/local/penyimpanan-berkas.js";
+import { raporBerkasLokal } from "../../src/adapters/local/rapor-berkas/index.js";
 import { buatApp } from "../../src/app.js";
 import { buatBasisData } from "../../src/db/drizzle.js";
 import type { DependensiApp } from "../../src/dependensi-app.js";
@@ -21,6 +26,20 @@ export type JawabanUji = Readonly<{
 
 const KATA_SANDI_FIXTURE = "kata-sandi-uji";
 
+let akarBerkas: string | undefined;
+
+/**
+ * Direktori berkas rapor bagi seluruh app uji dalam satu proses.
+ *
+ * Satu direktori dipakai bersama supaya pengujian dapat memeriksa berkas yang
+ * dihasilkan finalisasi lewat app lain, dan dibuang bersama direktori sementara
+ * sistem — tidak ada satu pun berkas uji yang jatuh ke dalam repositori.
+ */
+export function akarBerkasUji(): string {
+  akarBerkas ??= mkdtempSync(join(tmpdir(), "edutrack-uji-berkas-"));
+  return akarBerkas;
+}
+
 export async function nyalakanAppUji(pilihan: Partial<DependensiApp> = {}): Promise<AppUji> {
   const pool = pilihan.pool ?? poolPemilik();
   const dependensi: DependensiApp = {
@@ -28,6 +47,8 @@ export async function nyalakanAppUji(pilihan: Partial<DependensiApp> = {}): Prom
     db: pilihan.db ?? buatBasisData(pool),
     kataSandi: pilihan.kataSandi ?? kataSandiArgon2id(),
     berkasAdministrasi: pilihan.berkasAdministrasi ?? berkasAdministrasiLokal(),
+    penyimpanan: pilihan.penyimpanan ?? penyimpananBerkasLokal(akarBerkasUji()),
+    raporBerkas: pilihan.raporBerkas ?? raporBerkasLokal(),
     sekarang: pilihan.sekarang ?? (() => new Date()),
   };
   const server = buatApp(dependensi).listen(0);
@@ -86,8 +107,8 @@ export function panggilMultipart(app: AppUji, jalan: string, form: FormData): Pr
 /**
  * Masuk sebagai akun fixture.
  *
- * `namaPengguna` berawalan `a6-` dipakai apa adanya: kata sandi akun fixture
- * A6 itu diganti milik fixture, lalu dipakai masuk. Akun benih bersama
+ * `namaPengguna` berawalan `a6-` atau `a7-` dipakai apa adanya: kata sandi akun
+ * fixture itu diganti milik fixture, lalu dipakai masuk. Akun benih bersama
  * (`admin`, `198001011001`, `2026001`, …) TIDAK pernah disentuh — hash mereka
  * diuji keutuhannya oleh rute-templat.test.ts; selain itu dibuat akun fixture
  * `uji-a5-<peran>` sesuai peran akun yang disebut — perilaku bawaan A5.
@@ -99,9 +120,9 @@ export async function masukSebagai(app: AppUji, namaPengguna: string): Promise<s
   );
   const peranDisebut = peranHasil.rows[0]?.peran;
 
-  // Akun uji A6 yang disebut eksplisit: kata sandinya diganti milik fixture,
-  // lalu dipakai masuk — tanpa membuat akun baru.
-  if (namaPengguna.startsWith("a6-") && (peranDisebut === "guru" || peranDisebut === "siswa")) {
+  // Akun uji fixture yang disebut eksplisit: kata sandinya diganti milik
+  // fixture, lalu dipakai masuk — tanpa membuat akun baru.
+  if (/^a[67]-/.test(namaPengguna) && (peranDisebut === "guru" || peranDisebut === "siswa")) {
     const hash = await kataSandiArgon2id().hash(KATA_SANDI_FIXTURE);
     await poolPemilik().query(`UPDATE pengguna SET kata_sandi_hash = $1 WHERE nama_pengguna = $2`, [
       hash,
