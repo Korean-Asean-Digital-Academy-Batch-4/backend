@@ -19,6 +19,9 @@ services:
     ports:
       - "8080:8080"
     environment:
+      # Image yang sama dengan yang berjalan di Lambda. Yang membedakan hanya
+      # baris ini — ARCHITECTURE.md Pasal 13, src/entry/lingkungan.ts.
+      LINGKUNGAN: lokal
       # Aplikasi menyambung sebagai app_rw, BUKAN edutrack_owner —
       # ARCHITECTURE.md Pasal 8. Jalankan `npm run db:siapkan-role` sekali
       # supaya kata sandi kedua role ini ada di PostgreSQL.
