@@ -6,6 +6,7 @@ import {
   A6,
   bersihkanPencatatanA6,
   finalisasiRaporA6,
+  hapusFixtureA6,
   kembalikanRaporDraftA6,
   pasangFixtureA6,
 } from "./fixture-a6.js";
@@ -41,7 +42,7 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await hapusPemicuPresensiUji();
-  await bersihkanPencatatanA6();
+  await hapusFixtureA6();
   await app.tutup();
   await tutupPool();
 });

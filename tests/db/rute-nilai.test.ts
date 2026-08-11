@@ -11,6 +11,7 @@ import {
   A6,
   bersihkanPencatatanA6,
   finalisasiRaporA6,
+  hapusFixtureA6,
   kembalikanRaporDraftA6,
   komponenSnapshotA6,
   pasangFixtureA6,
@@ -46,7 +47,7 @@ beforeAll(async () => {
 afterAll(async () => {
   // Kembalikan keadaan bersih (termasuk melepas snapshot komponen) supaya tes
   // invarian pada komponen benih tidak mewarisi rantai FK dari fixture ini.
-  await bersihkanPencatatanA6();
+  await hapusFixtureA6();
   await app.tutup();
   await tutupPool();
 });

@@ -147,6 +147,55 @@ export async function bersihkanPencatatanA6(): Promise<void> {
 }
 
 /**
+ * Melepas seluruh data induk fixture agar berkas tes lain tidak melihat kelas
+ * A6 pada endpoint daftar global. File tes DB berjalan berurutan tetapi berbagi
+ * satu basis data, jadi pembersihan pencatatan saja tidak cukup untuk isolasi.
+ */
+export async function hapusFixtureA6(): Promise<void> {
+  const pool = poolPemilik();
+  const klien = await pool.connect();
+  try {
+    await klien.query("BEGIN");
+    await klien.query(`DELETE FROM nilai WHERE penugasan_ref = '${A6.penugasan}'`);
+    await klien.query(
+      `DELETE FROM presensi WHERE sesi_ref IN (SELECT id FROM sesi WHERE penugasan_ref = '${A6.penugasan}')`,
+    );
+    await klien.query(`DELETE FROM sesi WHERE penugasan_ref = '${A6.penugasan}'`);
+    await klien.query(
+      `DELETE FROM rapor WHERE kelas_ref = '${A6.kelas}' AND periode_ref = '${A6.periode}'`,
+    );
+    await klien.query(
+      `DELETE FROM penugasan_komponen WHERE penugasan_ref = '${A6.penugasan}'`,
+    );
+    await klien.query(`DELETE FROM penugasan WHERE id = '${A6.penugasan}'`);
+    await klien.query(`DELETE FROM kelas_siswa WHERE kelas_ref = '${A6.kelas}'`);
+    await klien.query(`DELETE FROM kelas WHERE id = '${A6.kelas}'`);
+    await klien.query(`DELETE FROM mapel WHERE id = '${A6.mapel}'`);
+    await klien.query(`DELETE FROM periode WHERE id = '${A6.periode}'`);
+    await klien.query(`DELETE FROM tahun_ajaran WHERE id = '${A6.tahunAjaran}'`);
+    await klien.query(
+      `DELETE FROM guru WHERE pengguna_ref IN ('${A6.guruPengampu}', '${A6.guruAsing}', '${A6.guruWali}')`,
+    );
+    await klien.query(
+      `DELETE FROM siswa WHERE pengguna_ref IN ('${A6.siswa1}', '${A6.siswa2}', '${A6.siswa3}', '${A6.siswaAsing}')`,
+    );
+    await klien.query(
+      `DELETE FROM pengguna WHERE id IN (
+        '${A6.guruPengampu}', '${A6.guruAsing}', '${A6.guruWali}',
+        '${A6.siswa1}', '${A6.siswa2}', '${A6.siswa3}', '${A6.siswaAsing}'
+      )`,
+    );
+    await klien.query("COMMIT");
+    pernahDipasang = false;
+  } catch (galat) {
+    await klien.query("ROLLBACK").catch(() => undefined);
+    throw galat;
+  } finally {
+    klien.release();
+  }
+}
+
+/**
  * Menandai rapor kelas fixture sebagai finalized — untuk pengujian I-22.
  *
  * Baris rapor tidak dibuat fixture; ia disisipkan di sini langsung berstatus
