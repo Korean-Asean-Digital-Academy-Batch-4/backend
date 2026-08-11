@@ -20,6 +20,31 @@ export default tseslint.config(
     },
   },
 
+  // SDK AWS hanya boleh diimpor adapters/aws/ — larangan mutlak 6 pada
+  // AGENTS.md sec 3.2, Prinsip 3 pada Techstack.md sec 1.
+  //
+  // Ditegakkan menyeluruh, bukan per lapisan. Aturan per lapisan menutup
+  // domain/ dan routes/ tetapi meninggalkan entry/, db/, dan ports/ terbuka —
+  // dan entry/ justru yang paling mudah tergoda, karena ia memang menyusun
+  // adapter dan tampak wajar menyerahkan klien yang sudah jadi.
+  {
+    files: ["src/**/*.ts"],
+    ignores: ["src/adapters/aws/**/*.ts"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["@aws-sdk/*", "@smithy/*"],
+              message: `SDK AWS hanya boleh diimpor adapters/aws/. ${pesan}`,
+            },
+          ],
+        },
+      ],
+    },
+  },
+
   // domain/ tanpa I/O sama sekali. Salah hitung di sini berarti rapor siswa salah,
   // sehingga ia harus dapat diuji tanpa basis data dan tanpa AWS.
   {

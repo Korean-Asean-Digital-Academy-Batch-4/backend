@@ -31,13 +31,19 @@ const GALAT_TIDAK_ADA = new Set(["NotFound", "NoSuchKey"]);
 
 export type PilihanPenyimpananS3 = Readonly<{
   bucket: string;
-  klien?: S3Client;
+  /**
+   * Region. Diteruskan sebagai teks, bukan sebagai klien yang sudah jadi:
+   * pemanggilnya berada di `entry/`, dan `entry/` tidak boleh mengimpor SDK AWS
+   * ([AGENTS.md §3.2] larangan 6).
+   */
+  wilayah?: string;
   /** Disuntikkan pada pengujian. */
+  klien?: S3Client;
   sekarang?: () => Date;
 }>;
 
 export function penyimpananBerkasS3(pilihan: PilihanPenyimpananS3): PenyimpananBerkas {
-  const klien = pilihan.klien ?? new S3Client({});
+  const klien = pilihan.klien ?? new S3Client(pilihan.wilayah ? { region: pilihan.wilayah } : {});
   const sekarang = pilihan.sekarang ?? (() => new Date());
 
   return {

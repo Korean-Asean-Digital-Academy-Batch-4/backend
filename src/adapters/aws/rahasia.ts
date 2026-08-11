@@ -35,13 +35,23 @@ export type PilihanRahasiaAws = Readonly<{
    */
   rujukan: Readonly<Partial<Record<PeranBasisData, string>>>;
   parameterKunciAi?: string;
+  /**
+   * Region. Diteruskan sebagai teks, bukan sebagai klien yang sudah jadi:
+   * pemanggilnya berada di `entry/`, dan `entry/` tidak boleh mengimpor SDK AWS
+   * ([AGENTS.md §3.2] larangan 6). Penyusunan kliennya urusan berkas ini.
+   */
+  wilayah?: string;
+  /** Disuntikkan pada pengujian, menggantikan kedua klien di atas. */
   klienRahasia?: SecretsManagerClient;
   klienParameter?: SSMClient;
 }>;
 
 export function rahasiaAws(pilihan: PilihanRahasiaAws): Rahasia {
-  const klienRahasia = pilihan.klienRahasia ?? new SecretsManagerClient({});
-  const klienParameter = pilihan.klienParameter ?? new SSMClient({});
+  const wilayah = pilihan.wilayah;
+  const klienRahasia =
+    pilihan.klienRahasia ?? new SecretsManagerClient(wilayah ? { region: wilayah } : {});
+  const klienParameter =
+    pilihan.klienParameter ?? new SSMClient(wilayah ? { region: wilayah } : {});
 
   return {
     async urlBasisData(peran) {

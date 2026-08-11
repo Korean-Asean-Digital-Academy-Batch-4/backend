@@ -1,6 +1,3 @@
-import { S3Client } from "@aws-sdk/client-s3";
-import { SecretsManagerClient } from "@aws-sdk/client-secrets-manager";
-import { SSMClient } from "@aws-sdk/client-ssm";
 import { z } from "zod";
 
 import { penyimpananBerkasS3 } from "../adapters/aws/penyimpanan-berkas.js";
@@ -86,10 +83,7 @@ export function pilihLingkungan(env: NodeJS.ProcessEnv = process.env): Lingkunga
   return Object.freeze({
     nama,
     rahasia: rahasiaAwsDari(tetapan),
-    penyimpanan: penyimpananBerkasS3({
-      bucket: BUCKET_RAPOR,
-      klien: new S3Client({ region: tetapan.AWS_REGION }),
-    }),
+    penyimpanan: penyimpananBerkasS3({ bucket: BUCKET_RAPOR, wilayah: tetapan.AWS_REGION }),
   });
 }
 
@@ -124,7 +118,8 @@ function rahasiaAwsDari(tetapan: z.infer<typeof skemaAws>): Rahasia {
       owner: tetapan.RAHASIA_OWNER,
     },
     parameterKunciAi: tetapan.PARAMETER_KUNCI_AI,
-    klienRahasia: new SecretsManagerClient({ region: tetapan.AWS_REGION }),
-    klienParameter: new SSMClient({ region: tetapan.AWS_REGION }),
+    // Region diteruskan sebagai teks. `entry/` tidak boleh mengimpor SDK AWS
+    // — AGENTS.md §3.2 larangan 6, dan itu ditegakkan eslint.
+    wilayah: tetapan.AWS_REGION,
   });
 }
