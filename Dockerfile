@@ -21,6 +21,18 @@ COPY --from=build /app/dist ./dist
 # Fungsi migrate membaca berkas ini saat rilis — DEPLOYMENT.md sec 3.3 langkah 6.
 COPY migrations ./migrations
 
+# Bundel CA Amazon RDS — CK-A-13. Koneksi ke RDS memverifikasi sertifikat
+# servernya, dan CA Amazon RDS tidak termasuk trust store bawaan Node.
+#
+# Ikut ke dalam image, bukan diunduh saat build: unduhan saat build menambah
+# ketergantungan jaringan pada setiap rilis dan satu permukaan rantai pasok yang
+# tidak terlihat pada diff.
+#
+# Yang mempercayainya adalah NODE_EXTRA_CA_CERTS, disetel Terraform hanya pada
+# lingkungan AWS. Di on-prem berkas ini ada di dalam image tetapi tidak pernah
+# dibaca.
+COPY certs ./certs
+
 ENV PORT=8080
 ENV AWS_LWA_READINESS_CHECK_PATH=/healthz
 EXPOSE 8080
