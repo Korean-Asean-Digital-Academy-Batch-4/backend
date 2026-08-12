@@ -500,6 +500,20 @@ describe("POST /api/kelas/:id/rapor/distribusi (API sec 8.4)", () => {
 
     expect(jawab.status).toBe(403);
   });
+
+  // Distribusi adalah satu-satunya endpoint rapor yang lapis perannya tidak
+  // pernah diuji terhadap Siswa, sedangkan keempat lainnya sudah. Penjaganya
+  // memang dibagi bersama, tetapi "dibagi bersama" adalah keadaan hari ini —
+  // bukan sesuatu yang menahan diri ketika seseorang memecahnya kelak.
+  it("menolak Siswa — matriks aktor-role §6", async () => {
+    await siapFinalisasi();
+    await finalisasi();
+
+    const jawab = await distribusi(sesiSiswaSatu);
+
+    expect(jawab.status).toBe(403);
+    expect(jawab.badan).toMatchObject({ kesalahan: { kode: "KEWENANGAN_DITOLAK" } });
+  });
 });
 
 describe("GET /api/rapor/:id/berkas — unduh per siswa (API sec 8.4)", () => {
