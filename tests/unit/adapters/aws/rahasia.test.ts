@@ -42,8 +42,19 @@ describe("rahasiaAws.urlBasisData", () => {
       .resolves({ SecretString: JSON.stringify({ username: "app_rw", password: "sandi" }) });
 
     await expect(buatRahasia().urlBasisData("app_rw")).resolves.toBe(
-      `postgresql://app_rw:sandi@${PILIHAN.inang}:5432/edutrack?sslmode=require`,
+      `postgresql://app_rw:sandi@${PILIHAN.inang}:5432/edutrack?sslmode=verify-full`,
     );
+  });
+
+  it("mematok verify-full, bukan require — CK-A-13", async () => {
+    tiruanRahasia
+      .on(GetSecretValueCommand)
+      .resolves({ SecretString: JSON.stringify({ username: "app_rw", password: "s" }) });
+
+    // `require` hari ini berarti verify-full pada pg 8, tetapi pg memperingatkan
+    // artinya akan MELEMAH pada v9. Nilai yang dipatok membuat peningkatan
+    // pustaka tidak diam-diam mematikan verifikasi sertifikat RDS.
+    await expect(buatRahasia().urlBasisData("app_rw")).resolves.not.toContain("sslmode=require");
   });
 
   it("meminta rahasia yang berbeda untuk peran yang berbeda", async () => {

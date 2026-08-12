@@ -118,7 +118,17 @@ function uraikanKredensial(isi: string | undefined, peran: PeranBasisData) {
 }
 
 /**
- * `sslmode=require` — RDS menyajikan TLS, dan koneksi tanpa TLS ditolak.
+ * `sslmode=verify-full` — CK-A-13.
+ *
+ * **Dipatok, bukan dibiarkan `require`.** `pg-connection-string` hari ini
+ * memperlakukan `require` sebagai `verify-full`, tetapi memperingatkan bahwa
+ * pada `pg` v9 artinya akan **melemah** mengikuti libpq, yaitu tanpa verifikasi
+ * sertifikat. Konfigurasi yang bersandar pada arti lama akan kehilangan
+ * verifikasinya pada peningkatan pustaka, tanpa satu pun gejala.
+ *
+ * Sertifikat RDS diverifikasi terhadap bundel CA Amazon RDS di dalam image,
+ * yang dipercaya lewat `NODE_EXTRA_CA_CERTS`. Tanpa itu, koneksinya ditolak
+ * dengan `self-signed certificate in certificate chain`.
  *
  * Nama pengguna dan kata sandinya disandikan persen: kata sandi acak yang
  * memuat `@`, `/`, atau `:` akan mengubah arti URL-nya apabila ditempel apa
@@ -130,5 +140,5 @@ function susunUrl(
 ): string {
   const pengguna = encodeURIComponent(kredensial.username);
   const sandi = encodeURIComponent(kredensial.password);
-  return `postgresql://${pengguna}:${sandi}@${pilihan.inang}:${pilihan.porta}/${pilihan.basisData}?sslmode=require`;
+  return `postgresql://${pengguna}:${sandi}@${pilihan.inang}:${pilihan.porta}/${pilihan.basisData}?sslmode=verify-full`;
 }
