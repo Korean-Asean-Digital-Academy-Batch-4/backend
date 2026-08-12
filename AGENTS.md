@@ -12,16 +12,6 @@
 >
 > Apabila isi dokumen ini bertentangan dengan dokumen pada rantai penguncian, **dokumen pada rantai penguncian yang berlaku**.
 
-> ⚠️ **Salinan.** Berkas induknya berada di repositori Docs pada `context/AGENTS.md`. Perubahan ditulis di sana lebih dahulu, lalu disalin ke sini — jangan disunting langsung di repositori ini.
->
-> Tautan dokumen di bawah menunjuk `../context/`, yaitu susunan pada mesin pengembang:
->
-> ```
-> ~/Documents/Edudex/
-> ├── context/   ← dokumen sumber kebenaran
-> └── backend/   ← repositori ini
-> ```
-
 ---
 
 ## 1. Hukum pertama
@@ -42,18 +32,18 @@ Membaca seluruh delapan dokumen sebelum setiap tugas adalah pemborosan. Membaca 
 
 | Yang dikerjakan | Wajib dibaca sebelum menulis kode |
 |---|---|
-| Apa pun, bila menemui singkatan asing | [GLOSARIUM.md](../context/GLOSARIUM.md) |
-| Skema Drizzle dan migrasi | [SCHEMA.md](../context/SCHEMA.md) §4–§7 dan §9 · [RFC-001](../context/RFC-001-model-data-konseptual.md) §6 |
-| Endpoint apa pun | [API.md](../context/API.md) §2, §10, dan pasal endpoint terkait · [ARCHITECTURE.md](../context/ARCHITECTURE.md) §9.2 |
-| Autentikasi dan sesi | [ARCHITECTURE.md](../context/ARCHITECTURE.md) §9 · [Techstack.md](../context/Techstack.md) §5 · [API.md](../context/API.md) §3 |
-| Nilai | [RFC-001](../context/RFC-001-model-data-konseptual.md) §5.1 · [ARCHITECTURE.md](../context/ARCHITECTURE.md) §14.1 · [API.md](../context/API.md) §6 |
-| Presensi | [PRD.md](../context/PRD.md) §8.4 · invarian I-14 sampai I-18 · [API.md](../context/API.md) §7 |
-| Rapor dan berkasnya | [PRD.md](../context/PRD.md) §9 · [RFC-001](../context/RFC-001-model-data-konseptual.md) §5.5 · [ARCHITECTURE.md](../context/ARCHITECTURE.md) Pasal 11 · [API.md](../context/API.md) §8 |
-| Jalur AI | [PRD.md](../context/PRD.md) §8.5 dan §8.6 · [ARCHITECTURE.md](../context/ARCHITECTURE.md) Pasal 10 · [SCHEMA.md](../context/SCHEMA.md) §7.1 · [API.md](../context/API.md) §9.1 |
-| Unggah berkas | [PRD.md](../context/PRD.md) §6.1.1, §6.1.2, §6.1.5 · AC-26 · [API.md](../context/API.md) §5.2 dan §5.7 |
-| Pemeriksaan kewenangan | [aktor-role.md](../context/aktor-role.md) seluruhnya · [ARCHITECTURE.md](../context/ARCHITECTURE.md) §9.2 |
-| Frontend | [ATURAN-DAN-KRITERIA.md](../context/ATURAN-DAN-KRITERIA.md) §3 · [ARCHITECTURE.md](../context/ARCHITECTURE.md) Pasal 4 · aturan ECC `web/` |
-| Terraform dan CI/CD | [Techstack.md](../context/Techstack.md) · [ARCHITECTURE.md](../context/ARCHITECTURE.md) Pasal 2 dan 12 · [DEPLOYMENT.md](../context/DEPLOYMENT.md) |
+| Apa pun, bila menemui singkatan asing | [GLOSARIUM.md](GLOSARIUM.md) |
+| Skema Drizzle dan migrasi | [SCHEMA.md](SCHEMA.md) §4–§7 dan §9 · [RFC-001](RFC-001-model-data-konseptual.md) §6 |
+| Endpoint apa pun | [API.md](API.md) §2, §10, dan pasal endpoint terkait · [ARCHITECTURE.md](ARCHITECTURE.md) §9.2 |
+| Autentikasi dan sesi | [ARCHITECTURE.md](ARCHITECTURE.md) §9 · [Techstack.md](Techstack.md) §5 · [API.md](API.md) §3 |
+| Nilai | [RFC-001](RFC-001-model-data-konseptual.md) §5.1 · [ARCHITECTURE.md](ARCHITECTURE.md) §14.1 · [API.md](API.md) §6 |
+| Presensi | [PRD.md](PRD.md) §8.4 · invarian I-14 sampai I-18 · [API.md](API.md) §7 |
+| Rapor dan berkasnya | [PRD.md](PRD.md) §9 · [RFC-001](RFC-001-model-data-konseptual.md) §5.5 · [ARCHITECTURE.md](ARCHITECTURE.md) Pasal 11 · [API.md](API.md) §8 |
+| Jalur AI | [PRD.md](PRD.md) §8.5 dan §8.6 · [ARCHITECTURE.md](ARCHITECTURE.md) Pasal 10 · [SCHEMA.md](SCHEMA.md) §7.1 · [API.md](API.md) §9.1 |
+| Unggah berkas | [PRD.md](PRD.md) §6.1.1, §6.1.2, §6.1.5 · AC-26 · [API.md](API.md) §5.2 dan §5.7 |
+| Pemeriksaan kewenangan | [aktor-role.md](aktor-role.md) seluruhnya · [ARCHITECTURE.md](ARCHITECTURE.md) §9.2 |
+| Frontend | [ATURAN-DAN-KRITERIA.md](ATURAN-DAN-KRITERIA.md) §3 · [ARCHITECTURE.md](ARCHITECTURE.md) Pasal 4 · aturan ECC `web/` |
+| Terraform dan CI/CD | [Techstack.md](Techstack.md) · [ARCHITECTURE.md](ARCHITECTURE.md) Pasal 2 dan 12 · [DEPLOYMENT.md](DEPLOYMENT.md) |
 
 ### 1.2 Ketika kode dan dokumen bertentangan
 
@@ -148,7 +138,7 @@ Pesan commit ditulis dalam **Bahasa Indonesia**, mengikuti konvensi repositori d
 
 ### 3.1 Batas modul
 
-Ditetapkan [ARCHITECTURE.md §5.1](../context/ARCHITECTURE.md). Pelanggarannya tidak selalu terlihat sebagai kesalahan, sehingga wajib diperiksa saat tinjauan.
+Ditetapkan [ARCHITECTURE.md §5.1](ARCHITECTURE.md). Pelanggarannya tidak selalu terlihat sebagai kesalahan, sehingga wajib diperiksa saat tinjauan.
 
 | Lapisan | Boleh mengimpor | Dilarang mengimpor |
 |---|---|---|
@@ -180,7 +170,7 @@ Dua belas hal berikut tidak boleh dilakukan agen dalam keadaan apa pun tanpa ama
 
 ### 3.3 Invarian
 
-Dua puluh lima invarian tercatat pada [RFC-001 §6](../context/RFC-001-model-data-konseptual.md), dan cara penegakan masing-masing pada [SCHEMA.md §5.1](../context/SCHEMA.md). Tujuh belas ditegakkan basis data; agen tidak perlu menulis kode untuk itu, tetapi **wajib tidak melemahkannya**.
+Dua puluh lima invarian tercatat pada [RFC-001 §6](RFC-001-model-data-konseptual.md), dan cara penegakan masing-masing pada [SCHEMA.md §5.1](SCHEMA.md). Tujuh belas ditegakkan basis data; agen tidak perlu menulis kode untuk itu, tetapi **wajib tidak melemahkannya**.
 
 Lima invarian berikut **sepenuhnya bergantung pada kode**. Di sinilah kekeliruan menghasilkan data atau tampilan salah tanpa ditolak siapa pun:
 
@@ -254,7 +244,7 @@ Titik uji lebar layar: **320, 375, 768, 1024, 1440**. Wajib terbaca pada perangk
 
 Sasaran Core Web Vitals dan anggaran bundel mengikuti ECC `web/performance.md`: LCP < 2,5 s, INP < 200 ms, CLS < 0,1, dan JS terkompresi < 300 kb untuk halaman aplikasi.
 
-Layar yang paling perlu regresi visual adalah **matriks nilai 30 × 8** ([ARCHITECTURE.md](../context/ARCHITECTURE.md) Pasal 4). Layar itu paling padat, paling sering dipakai Guru, dan paling mudah rusak pada layar sempit.
+Layar yang paling perlu regresi visual adalah **matriks nilai 30 × 8** ([ARCHITECTURE.md](ARCHITECTURE.md) Pasal 4). Layar itu paling padat, paling sering dipakai Guru, dan paling mudah rusak pada layar sempit.
 
 ---
 
@@ -288,7 +278,7 @@ Mengikuti ECC `common/coding-style.md` dan `web/coding-style.md`. Yang paling se
 
 ### 5.3 Migrasi
 
-**Migrasi wajib kompatibel mundur**, karena rollback aplikasi memindahkan alias tanpa memindahkan skema — kode rilis sebelumnya harus tetap berjalan di atas skema baru. Aturan lengkapnya pada [DEPLOYMENT.md §6.3](../context/DEPLOYMENT.md).
+**Migrasi wajib kompatibel mundur**, karena rollback aplikasi memindahkan alias tanpa memindahkan skema — kode rilis sebelumnya harus tetap berjalan di atas skema baru. Aturan lengkapnya pada [DEPLOYMENT.md §6.3](DEPLOYMENT.md).
 
 Lima aturan yang mengikat:
 
@@ -318,7 +308,7 @@ Penamaan berkas menyatakan fasenya: `0011_expand_*.sql`, `0013_contract_*.sql`.
 grep -rn "<nama_kolom>" src/
 ```
 
-**Setiap berkas menyusulkan dua baris batas** sesudah headernya. Rilis menunggu migrasi selesai ([DEPLOYMENT.md §3.3](../context/DEPLOYMENT.md) langkah 6), sehingga migrasi yang menggantung menahan seluruh rilis sambil memegang kunci:
+**Setiap berkas menyusulkan dua baris batas** sesudah headernya. Rilis menunggu migrasi selesai ([DEPLOYMENT.md §3.3](DEPLOYMENT.md) langkah 6), sehingga migrasi yang menggantung menahan seluruh rilis sambil memegang kunci:
 
 ```sql
 SET LOCAL lock_timeout = '3s';
@@ -337,7 +327,7 @@ Konfigurasinya pada `.squawk.toml`, dan **namanya wajib berawalan titik** — `s
 
 **Migrasi yang sudah pernah diterapkan tidak boleh disunting.** Penerap mencatat sidik jari SHA-256 setiap berkas dan menolak melanjutkan apabila isinya berubah. Perbaikan ditulis sebagai migrasi baru, bukan sebagai suntingan atas yang lama.
 
-Enam lapis penjagaan beserta alasannya pada [DEPLOYMENT.md §6.5](../context/DEPLOYMENT.md) dan CK-D-03. Lapis 4 dan 5 — tes rilis sebelumnya terhadap skema baru, dan latihan rollback sungguhan — wajib ada **sebelum data sekolah sungguhan dimuat**.
+Enam lapis penjagaan beserta alasannya pada [DEPLOYMENT.md §6.5](DEPLOYMENT.md) dan CK-D-03. Lapis 4 dan 5 — tes rilis sebelumnya terhadap skema baru, dan latihan rollback sungguhan — wajib ada **sebelum data sekolah sungguhan dimuat**.
 
 ---
 
@@ -405,7 +395,9 @@ Urutan mengikat: **format → lint → periksa tipe → build**.
 
 ## 8. Tahap implementasi
 
-Dua jalur berjalan **bersamaan**, bukan berurutan. Pembagiannya bukan soal keahlian melainkan soal apa yang mungkin: setiap jalur menuju kuasa AWS menuntut kode MFA dari ponsel manusia, sehingga **agen tidak dapat menaikkan infrastruktur sama sekali**.
+Dua jalur **dapat** berjalan bersamaan. Pembagiannya bukan soal keahlian melainkan soal apa yang mungkin: setiap jalur menuju kuasa AWS menuntut kode MFA dari ponsel manusia, sehingga **agen tidak dapat menaikkan infrastruktur sama sekali**.
+
+> **Urutan yang berlaku sejak 11 Agustus 2026: lokal lebih dahulu.** Jalur A diselesaikan sampai seluruh fiturnya berjalan di `docker compose` setempat, dan Jalur B **ditahan setelah B1** sampai saat itu. Alasannya dua. Pertama, RDS mulai menagih sejak menit ia menyala, sedangkan tidak satu pun tahap Jalur A membutuhkannya. Kedua — dan ini yang menentukan — janji "satu image, dua lingkungan" pada Pasal 13 [ARCHITECTURE.md](../context/ARCHITECTURE.md) belum pernah dibuktikan: `ports/Secrets` belum ada, `adapters/aws/` belum ada, dan `entry/server.ts` masih memilih adapter lokal secara tetap. Menaikkan infrastruktur sebelum sambungannya ada berarti membayar sewa untuk sesuatu yang belum dapat dihubungi.
 
 ```
 JALUR A — aplikasi (agen)            JALUR B — infrastruktur (manusia)
@@ -426,18 +418,23 @@ A8  jalur AI                                  ▼
 
 **Hanya dua titik temu.** B2 menunggu `Dockerfile` dari A1; rilis pertama menunggu B6. Selebihnya kedua jalur tidak saling menunggu.
 
+**Satu gerbang A7 memang tidak dapat ditutup secara lokal.** Pengukuran lama render tiga puluh PDF pada [API.md §13.3](../context/API.md) menuntut fungsi Lambda 1024 MB arm64 yang sungguhan. Selama Jalur B ditahan, A7 tetap tercatat **sebagian**; angkanya diambil pada rilis pertama. Yang diukur lokal hanya pembandingnya.
+
 ### 8.1 Jalur A — dikerjakan agen, tanpa menyentuh AWS
+
+**Jalur A seluruhnya backend.** Frontend tidak memiliki tahap di sini dan **berada di luar cakupan agen ini** — layarnya ditetapkan [ATURAN-DAN-KRITERIA §3](../context/ATURAN-DAN-KRITERIA.md) dan bentuknya [ARCHITECTURE Pasal 4](../context/ARCHITECTURE.md), tetapi pengerjaannya milik pihak lain. Aturan ECC `web/` dan §4.3 dokumen ini tetap berlaku apabila kelak dikerjakan di repositori yang sama. "Seluruh fitur berjalan lokal" karenanya berarti **seluruh endpoint terbukti lewat suite tes**, bukan lewat layar.
+
 
 | # | Tahap | Isi | Gerbang selesai |
 |:--:|---|---|---|
-| **A0** | Kerangka repositori | `package.json`, `tsconfig` strict, eslint beserta **penegakan batas modul**, prettier, vitest, struktur `src/` sesuai [ARCHITECTURE §5.1](../context/ARCHITECTURE.md), linter migrasi | `npm run periksa` bersih |
+| **A0** | Kerangka repositori | `package.json`, `tsconfig` strict, eslint beserta **penegakan batas modul**, prettier, vitest, struktur `src/` sesuai [ARCHITECTURE §5.1](ARCHITECTURE.md), linter migrasi | `npm run periksa` bersih |
 | **A1** | Docker | `Dockerfile` dengan Lambda Web Adapter, `docker-compose.yml` dengan PostgreSQL 17 | `docker compose up` menyala · `GET /healthz` menjawab |
-| **A2** | Skema dan migrasi | Drizzle beserta migrasi 0001–0010 sesuai [SCHEMA §9.1](../context/SCHEMA.md) | Seluruh migrasi jalan · **bukti penegakan basis data** §4.2 lulus · linter migrasi bersih |
+| **A2** | Skema dan migrasi | Drizzle beserta migrasi 0001–0010 sesuai [SCHEMA §9.1](SCHEMA.md) | Seluruh migrasi jalan · **bukti penegakan basis data** §4.2 lulus · linter migrasi bersih |
 | **A3** | `domain/` murni | `nilai.ts`, `presensi.ts`, `rapor.ts`. Tanpa I/O | **100% cabang** · I-17 dan I-18 terbukti |
 | **A4** | Auth dan sesi | Argon2id, cookie, pembatas laju di PostgreSQL | AC-33 · pencabutan sesi seketika · batas 5 percobaan per 15 menit |
 | **A5** | Administrasi | Akun, periode, mapel, kelas atomik | AC-01, 02, 03, 04, 22, 24, 26, 28 |
 | **A6** | Nilai dan presensi | Simpan Nilai, sesi presensi | AC-05, 06, 11, 12, 15, 25, 29, 30 |
-| **A7** | Rapor | Catatan, finalisasi, distribusi, berkas | AC-07, 08, 09, 13, 14, 32 · **pengukuran lama render** [API §13.3](../context/API.md) |
+| **A7** | Rapor | Catatan, finalisasi, distribusi, berkas | AC-07, 08, 09, 13, 14, 32 · **pengukuran lama render** [API §13.3](API.md) |
 | **A8** | Jalur AI | Tombol Suggestion lewat `app_ro` | AC-16, 17, 18, 19, 20, 21, 31 |
 
 ### 8.2 Jalur B — dikerjakan manusia
@@ -445,7 +442,7 @@ A8  jalur AI                                  ▼
 | # | Tahap | Kenapa agen tidak bisa |
 |:--:|---|---|
 | **B0** | IAM: user, grup, role | Konsol AWS, dan pembuatan MFA |
-| **B0.5** | OIDC provider, role, uji jabat tangan | Konsol AWS. Lihat [RUNBOOK-OIDC.md](../context/RUNBOOK-OIDC.md) |
+| **B0.5** | OIDC provider, role, uji jabat tangan | Konsol AWS. Lihat [RUNBOOK-OIDC.md](RUNBOOK-OIDC.md) |
 | **B1** | `terraform apply` pada `bootstrap/` | Peminjaman role menuntut kode MFA |
 | **B2** | Push image bootstrap ke ECR | Menunggu `Dockerfile` dari A1 |
 | **B3** | `terraform apply` pada `infra/` | Sama seperti B1. Rahasia dibuat di luar Terraform |
@@ -485,9 +482,9 @@ Agen **berhenti dan melapor** ketika mencapai salah satu titik berikut. Tidak me
 |---|---|---|
 | Kredensial AWS apa pun | Kode MFA | Berasal dari ponsel manusia |
 | `terraform apply` | Peminjaman role `edutrack-terraform` | Sama |
-| Pembuatan keempat rahasia | Dibuat di luar Terraform | [Techstack §7](../context/Techstack.md) |
-| Pendaftaran OIDC provider dan role | Konsol AWS | Lihat [RUNBOOK-OIDC.md](../context/RUNBOOK-OIDC.md) |
-| **Nama domain dan sertifikat** | Nama yang sesungguhnya, beserta pembelian domainnya | Bentuk DNS sudah ditetapkan **CK-17**; yang belum ada hanya namanya — [Techstack §9](../context/Techstack.md) butir 4. **Dikerjakan paling akhir** |
+| Pembuatan keempat rahasia | Dibuat di luar Terraform | [Techstack §7](Techstack.md) |
+| Pendaftaran OIDC provider dan role | Konsol AWS | Lihat [RUNBOOK-OIDC.md](RUNBOOK-OIDC.md) |
+| **Nama domain dan sertifikat** | Nama yang sesungguhnya, beserta pembelian domainnya | Bentuk DNS sudah ditetapkan **CK-17**; yang belum ada hanya namanya — [Techstack §9](Techstack.md) butir 4. **Dikerjakan paling akhir** |
 | Komponen dan bobot templat | Validasi sekolah **V1** | Hanya data, bukan skema. **Tidak menghalangi** |
 
 **Tiga pertanyaan sekolah sudah terjawab 8 Agustus 2026** dan tidak lagi menjadi titik henti: jenjang SMA saja (**S-04**), satu siswa satu kelas per semester (**T-02**), dan satu guru wali paling banyak satu kelas (**S-02**). Ketiganya sudah sesuai skema v1.0, sehingga tidak ada constraint yang berubah.
@@ -518,7 +515,7 @@ Rollback produksi berarti memindahkan alias ke version yang membeku pada satu SH
 | **Tag pada tiap rilis** | `v<n>` pada commit yang dirilis, sehingga version Lambda dapat ditelusuri balik |
 | **Jangan `push --force` ke `main`** | Menghapus jejak yang menjadi sandaran pemulihan |
 
-**Yang berjalan di produksi saat ini** dijawab lewat perintah pada [DEPLOYMENT §2.7](../context/DEPLOYMENT.md), bukan lewat tebakan — karena Terraform sengaja tidak mengetahuinya.
+**Yang berjalan di produksi saat ini** dijawab lewat perintah pada [DEPLOYMENT §2.7](DEPLOYMENT.md), bukan lewat tebakan — karena Terraform sengaja tidak mengetahuinya.
 
 ---
 
@@ -529,7 +526,7 @@ Urutan konkret dari `backend/` yang hanya berisi `README.md` sampai lingkungan l
 | # | Langkah | Selesai apabila |
 |:--:|---|---|
 | 1 | `package.json`, `tsconfig.json` strict, `.gitignore`, `.env.example` | `npm install` berhasil |
-| 2 | prettier, eslint beserta **penegakan batas modul** [ARCHITECTURE §5.1](../context/ARCHITECTURE.md), vitest | `npm run periksa` bersih |
+| 2 | prettier, eslint beserta **penegakan batas modul** [ARCHITECTURE §5.1](ARCHITECTURE.md), vitest | `npm run periksa` bersih |
 | 3 | Struktur `src/` — `app.ts`, `routes/`, `domain/`, `db/`, `ports/`, `adapters/`, `entry/` | Struktur cocok dengan ARCHITECTURE §5.1 |
 | 4 | `GET /healthz` yang memeriksa proses **dan** koneksi basis data | Menjawab `200` |
 | 5 | `Dockerfile` dengan Lambda Web Adapter | `docker build` berhasil |
@@ -590,14 +587,15 @@ engram setup claude-code
 
 `graphify` mengubah repositori ini menjadi graf yang dapat ditanyai, sehingga pertanyaan arsitektur dijawab dari graf alih-alih dengan membaca ulang berkas. Penghematan token datang dari situ.
 
-**Grafnya sudah dibangun.** Keadaan pada 8 Agustus 2026, sesudah A4:
+**Grafnya sudah dibangun.** Keadaan pada 12 Agustus 2026, sesudah Jalur B:
 
 | | |
 |---|---|
-| Simpul | 354 — 309 dari AST, 45 dari penyarian dokumen |
-| Sisi | 600 |
-| Komunitas | 20, seluruhnya sudah berlabel |
-| Korpus | 84 berkas, ~31.000 kata |
+| Simpul | 1.263 |
+| Sisi | 2.582 — 99% hasil ekstraksi, 1% inferensi |
+| Komunitas | 75, dan **hanya sekitar 16 yang berlabel bermakna** |
+| Korpus | 196 berkas, ~122.000 kata |
+| Dibangun dari | commit `f5689ea4` |
 | Keluaran | `graphify-out/graph.html`, `GRAPH_REPORT.md`, `graph.json` |
 
 #### Kewajiban
@@ -615,10 +613,14 @@ Membaca ulang lima berkas untuk menjawab satu pertanyaan hubungan adalah pemboro
 **Perbarui sesudah satu tahap §8.1 selesai**, bukan setiap kali menyimpan berkas:
 
 ```bash
-graphify . --update     # inkremental, hanya berkas yang berubah
+graphify update .       # ekstraksi ulang kode, TANPA kunci LLM
 ```
 
+**Bentuknya `graphify update .`, bukan `graphify . --update`.** Keduanya ada dan berbeda: yang kedua menyarikan dokumen pula, sehingga menuntut kunci LLM dan berhenti dengan `no LLM API key found` sebelum menyentuh satu pun berkas kode.
+
 Tahap yang menambah lapisan baru — rute, tabel, adapter — mengubah bentuk graf secara berarti. Suntingan di dalam satu fungsi tidak.
+
+**Pelabelan komunitas menuntut kunci LLM, dan pengelompokan ulang menghapusnya.** Setiap pembaruan mengelompokkan ulang seluruh graf; komunitas yang bentuknya berubah kehilangan namanya dan kembali menjadi `Community 37`. Menamainya kembali adalah `graphify label .`, yang menuntut kunci — sehingga sesudah pembaruan besar, **navigasi lewat nama komunitas berhenti dapat diandalkan** sementara kueri simpul dan jalur tetap sahih.
 
 #### Batas yang wajib diingat
 
@@ -638,11 +640,14 @@ Tahap yang menambah lapisan baru — rute, tabel, adapter — mengubah bentuk gr
 
 | Tanggal | Perubahan |
 |---|---|
+| 11 Agustus 2026 | §8.1 — dinyatakan bahwa Jalur A seluruhnya backend dan **frontend berada di luar cakupan agen**. Sebelumnya hal ini tidak tertulis di mana pun, sehingga peta tahapan tampak lengkap padahal tidak memuat frontend sama sekali |
+| 11 Agustus 2026 | §8 — **urutan berubah menjadi lokal lebih dahulu.** Jalur B ditahan setelah B1 sampai seluruh fitur Jalur A berjalan setempat. Dicatat pula bahwa gerbang pengukuran render A7 tidak dapat ditutup tanpa Lambda |
 | 6 Agustus 2026 | Dokumen dibuat. Menetapkan alur kerja agen ECC di atas rantai penguncian EduTrack: peta baca per jenis tugas, prosedur ketika kode dan dokumen bertentangan, dua belas larangan mutlak, tiga tingkat pengujian termasuk pembuktian penegakan oleh basis data, konvensi penamaan lintas lapisan, serta delapan tahap implementasi beserta gerbang selesainya |
-| 7 Agustus 2026 | §5.3 diperluas: lima aturan migrasi dinyatakan lengkap, ditambah header klasifikasi wajib, konvensi penamaan `expand`/`contract`, kewajiban `grep` sebelum `contract`, dan kewajiban lolos `squawk`. Mengikuti [DEPLOYMENT.md §6.5](../context/DEPLOYMENT.md) dan CK-D-03 |
+| 7 Agustus 2026 | §5.3 diperluas: lima aturan migrasi dinyatakan lengkap, ditambah header klasifikasi wajib, konvensi penamaan `expand`/`contract`, kewajiban `grep` sebelum `contract`, dan kewajiban lolos `squawk`. Mengikuti [DEPLOYMENT.md §6.5](DEPLOYMENT.md) dan CK-D-03 |
 | 7 Agustus 2026 | **Versi 2.0.** Pasal 8 ditulis ulang menjadi **dua jalur yang berjalan bersamaan** — Jalur A dikerjakan agen tanpa menyentuh AWS, Jalur B dikerjakan manusia — karena setiap jalur menuju kuasa AWS menuntut kode MFA sehingga agen tidak dapat menaikkan infrastruktur. Ditambahkan **§10 titik henti manusia**, **§11 git dan pemulihan** yang mengikat riwayat git pada rantai pemulihan produksi, dan **§12 memulai dari repositori kosong** |
 | 7 Agustus 2026 | Ditambahkan **§13 alat bantu ingatan dan penelusuran**: `engram` sebagai ingatan lintas sesi lewat MCP dengan nama proyek dipatok eksplisit, dan `graphify` sebagai graf pengetahuan atas kode. Ditegaskan bahwa keduanya tidak pernah menjadi sumber kebenaran, dan isi dokumen `context/` tidak boleh disalin ke dalam engram karena menghasilkan sumber kedua yang akan menyimpang |
 | 8 Agustus 2026 | **Versi 2.2 — disesuaikan dengan apa yang terbukti pada A2 dan A3.** §2 Fase 4 kini menyebut tiga perintah gerbang secara eksplisit, karena `npm run periksa` sendirian tidak menjalankan linter migrasi maupun bukti penegakan basis data. §4.1 menyatakan ambang `domain/` dipatok pada keempat metrik dan ambang global 80% baru menyala pada A5 beserta alasannya, serta mewajibkan setiap ambang dibuktikan dapat merah sebelum dipercaya. §4.2 menyebut perintah yang menjalankannya beserta alasan tesnya berurutan dan berbenih cadangan. §5.3 diperluas dengan baris `SET LOCAL` batas kunci dan batas pernyataan, konfigurasi `.squawk.toml` yang wajib berawalan titik, dan larangan menyunting migrasi yang sudah diterapkan. §6 menetapkan apa yang dilakukan ketika harness melarang pemanggilan subagen: tinjauan keamanan **berhenti dan melapor**, tidak diganti tinjauan sendiri. §12 langkah 7 dan §13 disesuaikan dengan keadaan yang sebenarnya |
 | 8 Agustus 2026 | §10 disesuaikan. Tiga pertanyaan sekolah — S-04, T-02, dan S-02 — sudah terjawab dan dikeluarkan dari daftar titik henti; barisnya diganti satu paragraf yang mencatat jawabannya. Baris nama domain diperbarui mengikuti **CK-17**: yang belum ada hanya namanya, bentuk DNS-nya sudah ditetapkan, dan penerapannya **sengaja dikerjakan paling akhir** tanpa menahan satu pun tahap Jalur A |
 | 8 Agustus 2026 | §13.2 ditulis ulang sesudah graf benar-benar dibangun: 354 simpul, 600 sisi, 20 komunitas berlabel. Ditetapkan **kewajiban menanyai graf lebih dahulu** untuk pertanyaan hubungan, dan pembaruan diikat pada gerbang tahap §8.1. Dicatat pula tiga batasnya — graf bukan sumber kebenaran, graf boleh usang tanpa memberi tahu, dan 134 sisi berujung menggantung menjadikan **ketiadaan hubungan tidak membuktikan apa-apa** |
+| 12 Agustus 2026 | §13.2 disesuaikan sesudah Jalur B: graf kini 1.263 simpul dan 2.582 sisi dari 196 berkas. Dua koreksi yang menentukan — perintah pembaruannya `graphify update .`, **bukan** `graphify . --update` yang menuntut kunci LLM; dan pengelompokan ulang **menghapus label komunitas**, sehingga hanya sekitar 16 dari 75 yang masih bernama dan navigasi lewat nama komunitas berhenti dapat diandalkan sampai `graphify label .` dijalankan |
 | 10 Agustus 2026 | **Versi 2.3 — delivery-first dan hemat token.** §6 tidak lagi menetapkan kelas model tertentu. Orkestrasi sekarang didasarkan pada artefak, risiko, dan bukti selesai: satu pemilik per irisan RED–GREEN, delegasi hanya untuk kerja berbatas dan independen, maksimal dua reviewer pada gelombang biasa, parallelism bersyarat, re-review terfokus, keluaran ringkas, dan full gate pada milestone terintegrasi serta keadaan final |
