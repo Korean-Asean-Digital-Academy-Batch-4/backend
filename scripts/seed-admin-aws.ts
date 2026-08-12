@@ -42,7 +42,9 @@ function berhenti(pesan: string): never {
   process.exit(1);
 }
 
-const argumen = process.argv.slice(2).filter((satu) => !satu.startsWith("--"));
+const bendera = process.argv.slice(2);
+const ganti = bendera.includes("--ganti-kata-sandi");
+const argumen = bendera.filter((satu) => !satu.startsWith("--"));
 const namaPengguna = argumen[0];
 const nama = argumen[1] ?? argumen[0];
 
@@ -68,30 +70,53 @@ const pool = new Pool({ connectionString: url, max: 1 });
 try {
   const hash = await kataSandiArgon2id().hash(kataSandiPolos);
 
-  // `ON CONFLICT DO NOTHING`: perintah ini TIDAK menimpa akun yang sudah ada.
-  // Penggantian kata sandi adalah tindakan lain, dan menyamarkannya sebagai
-  // pembuatan akan membuat sebuah salah ketik menimpa Administrator yang
-  // sedang dipakai.
-  //
-  // Sasaran konfliknya `lower(nama_pengguna)`, BUKAN kolomnya. Indeks uniknya
-  // memang indeks ekspresi — `uq_pengguna_nama_pengguna ON pengguna
-  // (lower(nama_pengguna))` — sehingga menyebut kolomnya saja dijawab
-  // PostgreSQL dengan "no unique or exclusion constraint matching".
-  const hasil = await pool.query<{ id: string }>(
-    `INSERT INTO pengguna (nama_pengguna, nama, peran, kata_sandi_hash)
-     VALUES ($1, $2, 'administrator', $3)
-     ON CONFLICT (lower(nama_pengguna)) DO NOTHING
-     RETURNING id`,
-    [namaPengguna, nama, hash],
-  );
+  if (ganti) {
+    // Seluruh sesi dicabut, berbeda dari penggantian oleh pemilik akun sendiri
+    // yang mempertahankan sesi yang sedang dipakai. Jalur ini dipakai ketika
+    // akunnya sudah tidak dapat dimasuki lagi, sehingga tidak ada sesi yang
+    // layak dipertahankan — sama seperti `db/administrator.ts`.
+    const diganti = await pool.query<{ id: string }>(
+      `UPDATE pengguna SET kata_sandi_hash = $1, diperbarui_pada = now()
+       WHERE lower(nama_pengguna) = lower($2) AND peran = 'administrator'
+       RETURNING id`,
+      [hash, namaPengguna],
+    );
 
-  if (hasil.rowCount === 0) {
-    berhenti(`Nama pengguna ${namaPengguna} sudah dipakai. Akun yang ada TIDAK diubah.`);
+    const id = diganti.rows[0]?.id;
+    if (!id) berhenti(`Administrator "${namaPengguna}" tidak ditemukan.`);
+
+    const sesi = await pool.query(`DELETE FROM sesi_masuk WHERE pengguna_ref = $1`, [id]);
+    console.log(`Kata sandi ${namaPengguna} diganti. ${sesi.rowCount ?? 0} sesi dicabut.`);
+  } else {
+    // `ON CONFLICT DO NOTHING`: perintah ini TIDAK menimpa akun yang sudah ada.
+    // Penggantian kata sandi adalah tindakan lain, dan menyamarkannya sebagai
+    // pembuatan akan membuat sebuah salah ketik menimpa Administrator yang
+    // sedang dipakai.
+    //
+    // Sasaran konfliknya `lower(nama_pengguna)`, BUKAN kolomnya. Indeks uniknya
+    // memang indeks ekspresi — `uq_pengguna_nama_pengguna ON pengguna
+    // (lower(nama_pengguna))` — sehingga menyebut kolomnya saja dijawab
+    // PostgreSQL dengan "no unique or exclusion constraint matching".
+    const hasil = await pool.query<{ id: string }>(
+      `INSERT INTO pengguna (nama_pengguna, nama, peran, kata_sandi_hash)
+       VALUES ($1, $2, 'administrator', $3)
+       ON CONFLICT (lower(nama_pengguna)) DO NOTHING
+       RETURNING id`,
+      [namaPengguna, nama, hash],
+    );
+
+    if (hasil.rowCount === 0) {
+      berhenti(
+        `Nama pengguna ${namaPengguna} sudah dipakai. Akun yang ada TIDAK diubah.\n` +
+          `Untuk menyetel ulang kata sandinya, ulangi dengan --ganti-kata-sandi.`,
+      );
+    }
+
+    console.log(`Akun Administrator dibuat: ${namaPengguna} (${nama}).`);
   }
 
   // Kata sandi tidak dicetak — operator sudah memegangnya, dan mencetaknya
   // hanya menambah satu tempat lagi ia dapat tertinggal.
-  console.log(`Akun Administrator dibuat: ${namaPengguna} (${nama}).`);
   console.log("Gantilah kata sandinya pada masuk pertama — PATCH /api/saya/kata-sandi.");
 } catch (galat) {
   berhenti(`Pembuatan gagal: ${galat instanceof Error ? galat.message : String(galat)}`);
